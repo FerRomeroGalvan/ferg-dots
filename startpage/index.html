@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>inkycap</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+  :root {
+    --bg:#0D0D0D;--bg-alt:#1E1A14;--bg-2:#2E2A22;
+    --fg:#F2F2F2;--ivory:#F5EFE0;--bone:#E8E0D0;
+    --amber:#D99962;--wax:#C8955A;--wick:#7A6A55;
+    --shadow:#555555;--dim:#383838;--ember:#6B2A1A;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{min-height:100vh;background:var(--bg);color:var(--fg);font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.6;}
+  body{display:flex;flex-direction:column;align-items:center;padding:2rem;gap:0;}
+
+  /* ── MODE BAR ── */
+  .mode-bar{width:100%;max-width:500px;display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;padding-bottom:.5rem;border-bottom:1px solid var(--dim);}
+  .mode-label{color:var(--dim);font-size:.7rem;letter-spacing:.15em;}
+  .mode-tabs{display:flex;gap:.5rem;align-items:center;}
+  .mode-btn{background:none;border:none;color:var(--shadow);font-family:'JetBrains Mono',monospace;font-size:.7rem;cursor:pointer;padding:0;letter-spacing:.05em;transition:color .15s;}
+  .mode-btn:hover{color:var(--amber);}
+  .mode-btn.active{color:var(--amber);}
+  .mode-sep{color:var(--dim);font-size:.7rem;}
+
+  /* ── VIEWS ── */
+  .view{width:100%;max-width:500px;display:none;flex-direction:column;gap:2rem;}
+  .view.active{display:flex;}
+
+  /* ── CANDLE ── */
+  .candle{text-align:center;}
+  .flame{color:var(--amber);font-size:12px;line-height:1.35;animation:flicker 3s ease-in-out infinite;display:block;}
+  .wax-body{color:var(--wax);font-size:12px;line-height:1.35;display:block;}
+  .wax-base{color:var(--wick);font-size:12px;line-height:1.35;display:block;}
+  @keyframes flicker{0%,100%{opacity:1;transform:scaleX(1);}25%{opacity:.85;transform:scaleX(.97) translateX(1px);}50%{opacity:.95;transform:scaleX(1.02) translateX(-1px);}75%{opacity:.9;transform:scaleX(.98) translateX(1px);}}
+
+  /* ── SEARCH ── */
+  .search-wrap{width:100%;}
+  .search-label{color:var(--wick);font-size:.75rem;margin-bottom:.35rem;}
+  .search-label span{color:var(--amber);}
+  .search-row{display:flex;align-items:center;gap:.5rem;border-bottom:1px solid var(--dim);padding-bottom:.35rem;}
+  .caret{color:var(--amber);}
+  .search-input{flex:1;background:transparent;border:none;outline:none;color:var(--bone);font-family:'JetBrains Mono',monospace;font-size:.9rem;caret-color:var(--amber);}
+  .search-input::placeholder{color:var(--dim);}
+
+  /* ── PANEL (tasks) ── */
+  .panel{width:100%;}
+  .panel-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--dim);padding-bottom:.35rem;margin-bottom:.75rem;}
+  .panel-label{color:var(--dim);font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;}
+  .tab-row{display:flex;gap:.5rem;}
+  .tab-btn{background:none;border:none;color:var(--shadow);font-family:'JetBrains Mono',monospace;font-size:.7rem;cursor:pointer;padding:0;letter-spacing:.05em;transition:color .15s;}
+  .tab-btn:hover,.tab-btn.active{color:var(--amber);}
+  .tab-sep{color:var(--dim);font-size:.7rem;}
+  .today-view{display:block;}
+  .today-view.hidden{display:none;}
+  .today-date{color:var(--wax);font-size:.8rem;margin-bottom:.75rem;}
+  .today-date span{color:var(--amber);}
+  .task-input-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;}
+  .task-caret{color:var(--dim);font-size:.85rem;}
+  .task-input{flex:1;background:transparent;border:none;border-bottom:1px solid var(--dim);outline:none;color:var(--bone);font-family:'JetBrains Mono',monospace;font-size:.85rem;caret-color:var(--amber);padding-bottom:.2rem;}
+  .task-input::placeholder{color:var(--dim);}
+  .task-list{list-style:none;display:flex;flex-direction:column;gap:.3rem;}
+  .task-item{display:flex;align-items:baseline;gap:.6rem;color:var(--wick);font-size:.85rem;cursor:pointer;padding:.2rem 0;transition:color .15s;animation:slidein .2s ease;}
+  .task-item:hover{color:var(--bone);}
+  .task-item.done{color:var(--dim);text-decoration:line-through;}
+  .task-marker{color:var(--shadow);font-size:.8rem;flex-shrink:0;}
+  .task-item.done .task-marker::before{content:'▌';}
+  .task-item:not(.done) .task-marker::before{content:'▏';}
+  .task-del{margin-left:auto;color:var(--dim);font-size:.75rem;opacity:0;transition:opacity .15s;cursor:pointer;flex-shrink:0;}
+  .task-item:hover .task-del{opacity:1;}
+  .task-del:hover{color:var(--ember);}
+  @keyframes slidein{from{opacity:0;transform:translateX(-4px);}to{opacity:1;transform:translateX(0);}}
+  .calendar{display:none;}
+  .calendar.active{display:block;}
+  .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;}
+  .cal-nav-btn{background:none;border:none;color:var(--shadow);font-family:'JetBrains Mono',monospace;font-size:.85rem;cursor:pointer;padding:0 .25rem;transition:color .15s;}
+  .cal-nav-btn:hover{color:var(--amber);}
+  .cal-month-label{color:var(--ivory);font-size:.85rem;letter-spacing:.05em;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+  .cal-dow{text-align:center;color:var(--dim);font-size:.65rem;letter-spacing:.1em;padding:.2rem 0;text-transform:uppercase;}
+  .cal-day{text-align:center;font-size:.75rem;padding:.3rem .1rem;color:var(--shadow);cursor:pointer;border-radius:2px;transition:background .1s,color .1s;position:relative;}
+  .cal-day:hover{background:var(--bg-alt);color:var(--bone);}
+  .cal-day.today{color:var(--amber);background:var(--bg-alt);outline:1px solid var(--dim);}
+  .cal-day.other-month{color:var(--dim);opacity:.4;}
+  .cal-day.has-tasks::after{content:'';display:block;width:3px;height:3px;background:var(--wax);border-radius:50%;margin:1px auto 0;}
+  .cal-day.today.has-tasks::after{background:var(--amber);}
+
+  /* ── WEATHER ── */
+  .weather-wrap{width:100%;}
+  .weather-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--dim);padding-bottom:.35rem;margin-bottom:.6rem;cursor:pointer;}
+  .weather-label{color:var(--dim);font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;}
+  .weather-toggle{color:var(--shadow);font-size:.7rem;transition:color .15s;}
+  .weather-header:hover .weather-toggle{color:var(--amber);}
+  .weather-primary{display:flex;align-items:baseline;gap:1rem;margin-bottom:.5rem;}
+  .weather-city{color:var(--amber);font-size:.85rem;}
+  .weather-temp{color:var(--ivory);font-size:1.6rem;font-weight:200;}
+  .weather-desc{color:var(--wick);font-size:.8rem;}
+  .weather-extra{display:flex;gap:1.5rem;}
+  .weather-stat{color:var(--shadow);font-size:.75rem;}
+  .weather-stat span{color:var(--wick);}
+  .weather-others{display:none;margin-top:.75rem;border-top:1px solid var(--dim);padding-top:.6rem;flex-direction:column;gap:.4rem;}
+  .weather-others.open{display:flex;}
+  .weather-other-row{display:flex;align-items:baseline;gap:.75rem;}
+  .weather-other-city{color:var(--wick);font-size:.8rem;width:120px;}
+  .weather-other-temp{color:var(--bone);font-size:.85rem;}
+  .weather-other-desc{color:var(--shadow);font-size:.75rem;}
+  .weather-loading,.weather-error{color:var(--dim);font-size:.8rem;}
+  .weather-error{color:var(--ember);}
+
+  /* ── LINKS ── */
+  .links-wrap{width:100%;}
+  .links-label{color:var(--dim);font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;margin-bottom:.6rem;border-bottom:1px solid var(--dim);padding-bottom:.3rem;}
+  .links-grid{display:grid;grid-template-columns:1fr 1fr;gap:.4rem 2rem;}
+  .link{display:flex;align-items:center;gap:.5rem;text-decoration:none;color:var(--wick);font-size:.82rem;padding:.25rem 0;border-bottom:1px solid transparent;transition:color .15s;}
+  .link:hover{color:var(--bone);border-bottom-color:var(--dim);}
+  .link:hover .link-icon{color:var(--amber);}
+  .link-icon{color:var(--shadow);width:14px;text-align:center;font-size:.75rem;transition:color .15s;}
+  .link-key{color:var(--dim);font-size:.7rem;margin-left:auto;}
+
+  /* ── GITHUB WORKSPACE ── */
+  .gh-section{width:100%;}
+  .gh-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--dim);padding-bottom:.35rem;margin-bottom:.75rem;}
+  .gh-label{color:var(--dim);font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;}
+  .gh-meta{color:var(--shadow);font-size:.7rem;}
+  .gh-loading{color:var(--dim);font-size:.8rem;}
+  .gh-error{color:var(--ember);font-size:.75rem;}
+
+  .gh-streak-row{display:flex;align-items:baseline;gap:1rem;margin-bottom:.25rem;}
+  .gh-streak-num{color:var(--amber);font-size:1.8rem;font-weight:200;}
+  .gh-streak-label{color:var(--wick);font-size:.8rem;}
+  .gh-streak-sub{color:var(--shadow);font-size:.75rem;}
+
+  .gh-commit-list{list-style:none;display:flex;flex-direction:column;gap:.35rem;}
+  .gh-commit{display:flex;align-items:baseline;gap:.6rem;font-size:.8rem;}
+  .gh-commit-repo{color:var(--wax);flex-shrink:0;min-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .gh-commit-msg{color:var(--wick);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .gh-commit-age{color:var(--dim);font-size:.72rem;flex-shrink:0;}
+
+  .gh-repo-list{list-style:none;display:flex;flex-direction:column;gap:.35rem;}
+  .gh-repo{display:flex;align-items:baseline;gap:.6rem;font-size:.8rem;}
+  .gh-repo-name{color:var(--bone);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .gh-repo-stars{color:var(--shadow);font-size:.72rem;flex-shrink:0;}
+  .gh-repo-pushed{color:var(--dim);font-size:.72rem;flex-shrink:0;}
+
+  .gh-pr-list{list-style:none;display:flex;flex-direction:column;gap:.35rem;}
+  .gh-pr{display:flex;align-items:baseline;gap:.6rem;font-size:.8rem;}
+  .gh-pr-repo{color:var(--wax);flex-shrink:0;min-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .gh-pr-title{color:var(--wick);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .gh-pr-state{font-size:.7rem;flex-shrink:0;}
+  .gh-pr-state.open{color:var(--wax);}
+  .gh-pr-state.closed{color:var(--dim);}
+
+  .footer{color:var(--dim);font-size:.68rem;letter-spacing:.1em;margin-top:2rem;}
+</style>
+</head>
+<body>
+
+<!-- MODE BAR -->
+<div class="mode-bar">
+  <span class="mode-label">inkycap@Substrate</span>
+  <div class="mode-tabs">
+    <button class="mode-btn active" id="mode-home" onclick="setMode('home')">home</button>
+    <span class="mode-sep">·</span>
+    <button class="mode-btn" id="mode-workspace" onclick="setMode('workspace')">workspace</button>
+  </div>
+</div>
+
+<!-- HOME VIEW -->
+<div class="view active" id="view-home">
+  <div class="candle">
+    <pre class="flame">    )
+   ) \
+  / ) (
+  \(_)/</pre>
+    <pre class="wax-body">  .-'-.
+  |   |
+  |   |
+  |   |
+  |   |
+  |   |</pre>
+    <pre class="wax-base"> /     \
+'-------'</pre>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-label"><span>~/</span> search</div>
+    <div class="search-row">
+      <span class="caret">❯</span>
+      <input class="search-input" id="search" type="text" placeholder="type to search the web..." autofocus>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-label">// tasks</span>
+      <div class="tab-row">
+        <button class="tab-btn active" id="tab-today" onclick="showTab('today')">today</button>
+        <span class="tab-sep">·</span>
+        <button class="tab-btn" id="tab-month" onclick="showTab('month')">month</button>
+      </div>
+    </div>
+    <div class="today-view" id="today-view">
+      <div class="today-date" id="today-date"></div>
+      <div class="task-input-row">
+        <span class="task-caret">+</span>
+        <input class="task-input" id="task-input" type="text" placeholder="add a task...">
+      </div>
+      <ul class="task-list" id="task-list"></ul>
+    </div>
+    <div class="calendar" id="calendar-view">
+      <div class="cal-nav">
+        <button class="cal-nav-btn" onclick="changeMonth(-1)">←</button>
+        <span class="cal-month-label" id="cal-month-label"></span>
+        <button class="cal-nav-btn" onclick="changeMonth(1)">→</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+  </div>
+
+  <div class="weather-wrap">
+    <div class="weather-header" onclick="toggleWeatherOthers()">
+      <span class="weather-label">// weather</span>
+      <span class="weather-toggle" id="weather-toggle">[ + ]</span>
+    </div>
+    <div id="weather-main"><span class="weather-loading">fetching weather...</span></div>
+    <div class="weather-others" id="weather-others"></div>
+  </div>
+
+  <div class="links-wrap">
+    <div class="links-label">// bookmarks</div>
+    <div class="links-grid">
+      <a class="link" href="https://mail.google.com" target="_blank">
+        <span class="link-icon">✉</span><span>gmail</span><span class="link-key">m</span>
+      </a>
+      <a class="link" href="https://overleaf.com" target="_blank">
+        <span class="link-icon">◈</span><span>overleaf</span><span class="link-key">o</span>
+      </a>
+      <a class="link" href="https://claude.ai" target="_blank">
+        <span class="link-icon">◆</span><span>claude</span><span class="link-key">a</span>
+      </a>
+      <a class="link" href="https://github.com/FerRomeroGalvan" target="_blank">
+        <span class="link-icon">⌥</span><span>github</span><span class="link-key">g</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- WORKSPACE VIEW -->
+<div class="view" id="view-workspace">
+
+  <div class="gh-section">
+    <div class="gh-header">
+      <span class="gh-label">// streak</span>
+      <span class="gh-meta" id="gh-streak-meta"></span>
+    </div>
+    <div id="gh-streak"><span class="gh-loading">loading...</span></div>
+  </div>
+
+  <div class="gh-section">
+    <div class="gh-header">
+      <span class="gh-label">// recent commits</span>
+    </div>
+    <ul class="gh-commit-list" id="gh-commits"><li class="gh-loading">loading...</li></ul>
+  </div>
+
+  <div class="gh-section">
+    <div class="gh-header">
+      <span class="gh-label">// repos</span>
+    </div>
+    <ul class="gh-repo-list" id="gh-repos"><li class="gh-loading">loading...</li></ul>
+  </div>
+
+  <div class="gh-section">
+    <div class="gh-header">
+      <span class="gh-label">// open prs & issues</span>
+    </div>
+    <ul class="gh-pr-list" id="gh-prs"><li class="gh-loading">loading...</li></ul>
+  </div>
+
+</div>
+
+<div class="footer">inkycap · ferg-dots</div>
+
+<script>
+  // ── CONFIG ──
+  const GH_TOKEN = '__GH_TOKEN__';
+  const GH_USER  = 'FerRomeroGalvan';
+
+  // ── MODE ──
+  let currentMode = 'home';
+  function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('view-home').classList.toggle('active', mode==='home');
+    document.getElementById('view-workspace').classList.toggle('active', mode==='workspace');
+    document.getElementById('mode-home').classList.toggle('active', mode==='home');
+    document.getElementById('mode-workspace').classList.toggle('active', mode==='workspace');
+    if (mode==='workspace') loadGitHub();
+    if (mode==='home') document.getElementById('search').focus();
+  }
+
+  // ── TASKS ──
+  const STORAGE_KEY = 'candle-tasks';
+  let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');
+  let calDate = new Date();
+  let activeDayKey = todayKey();
+
+  function saveTasks(){localStorage.setItem(STORAGE_KEY,JSON.stringify(tasks));}
+  function todayKey(){const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;}
+  function dateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+
+  function renderTodayLabel(date){
+    const days=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    const months=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const d=date||new Date();
+    document.getElementById('today-date').innerHTML=`<span>${days[d.getDay()]}</span>, ${String(d.getDate()).padStart(2,'0')} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  function renderTasks(key){
+    const list=document.getElementById('task-list');
+    list.innerHTML='';
+    (tasks[key]||[]).forEach((t,i)=>{
+      const li=document.createElement('li');
+      li.className='task-item'+(t.done?' done':'');
+      li.innerHTML=`<span class="task-marker"></span><span class="task-text">${t.text}</span><span class="task-del">✕</span>`;
+      li.querySelector('.task-text').onclick=()=>{tasks[key][i].done=!tasks[key][i].done;saveTasks();renderTasks(key);};
+      li.querySelector('.task-marker').onclick=()=>{tasks[key][i].done=!tasks[key][i].done;saveTasks();renderTasks(key);};
+      li.querySelector('.task-del').onclick=(e)=>{e.stopPropagation();tasks[key].splice(i,1);saveTasks();renderTasks(key);renderCalendar();};
+      list.appendChild(li);
+    });
+  }
+
+  function addTask(key,text){if(!tasks[key])tasks[key]=[];tasks[key].push({text,done:false});saveTasks();renderTasks(key);renderCalendar();}
+
+  function bindTaskInput(key){
+    const inp=document.getElementById('task-input');
+    inp.onkeydown=null;
+    inp.addEventListener('keydown',function(e){if(e.key==='Enter'){const v=e.target.value.trim();if(v){addTask(key,v);e.target.value='';}});
+  }
+
+  function showTab(tab){
+    document.getElementById('tab-today').classList.toggle('active',tab==='today');
+    document.getElementById('tab-month').classList.toggle('active',tab==='month');
+    document.getElementById('today-view').classList.toggle('hidden',tab!=='today');
+    document.getElementById('calendar-view').classList.toggle('active',tab==='month');
+    if(tab==='today'){activeDayKey=todayKey();renderTodayLabel();renderTasks(activeDayKey);bindTaskInput(activeDayKey);}
+    else renderCalendar();
+  }
+
+  function renderCalendar(){
+    const months=['january','february','march','april','may','june','july','august','september','october','november','december'];
+    const year=calDate.getFullYear(),month=calDate.getMonth();
+    document.getElementById('cal-month-label').textContent=`${months[month]} ${year}`;
+    const grid=document.getElementById('cal-grid');
+    grid.innerHTML='';
+    ['su','mo','tu','we','th','fr','sa'].forEach(d=>{const el=document.createElement('div');el.className='cal-dow';el.textContent=d;grid.appendChild(el);});
+    const firstDay=new Date(year,month,1).getDay();
+    const daysInMonth=new Date(year,month+1,0).getDate();
+    const daysInPrev=new Date(year,month,0).getDate();
+    const today=new Date();
+    for(let i=0;i<firstDay;i++){const el=document.createElement('div');el.className='cal-day other-month';el.textContent=daysInPrev-firstDay+i+1;grid.appendChild(el);}
+    for(let d=1;d<=daysInMonth;d++){
+      const el=document.createElement('div');
+      const thisDate=new Date(year,month,d);
+      const key=dateKey(thisDate);
+      const isToday=today.getFullYear()===year&&today.getMonth()===month&&today.getDate()===d;
+      el.className='cal-day'+(isToday?' today':'')+(tasks[key]&&tasks[key].length?' has-tasks':'');
+      el.textContent=d;
+      el.onclick=()=>jumpToDay(thisDate);
+      grid.appendChild(el);
+    }
+    const remaining=(firstDay+daysInMonth)%7===0?0:7-((firstDay+daysInMonth)%7);
+    for(let i=1;i<=remaining;i++){const el=document.createElement('div');el.className='cal-day other-month';el.textContent=i;grid.appendChild(el);}
+  }
+
+  function changeMonth(dir){calDate=new Date(calDate.getFullYear(),calDate.getMonth()+dir,1);renderCalendar();}
+
+  function jumpToDay(date){
+    const key=dateKey(date);
+    activeDayKey=key;
+    showTab('today');
+    renderTodayLabel(date);
+    renderTasks(key);
+    bindTaskInput(key);
+  }
+
+  // ── WEATHER ──
+  const CITIES=[
+    {name:'sacramento',lat:38.5816,lon:-121.4944,primary:true},
+    {name:'santa barbara',lat:34.4208,lon:-119.6982,primary:false},
+    {name:'napa',lat:38.2975,lon:-122.2869,primary:false},
+    {name:'sylmar',lat:34.2928,lon:-118.4573,primary:false},
+  ];
+  const WX={0:'clear',1:'mainly clear',2:'partly cloudy',3:'overcast',45:'fog',48:'icy fog',51:'light drizzle',53:'drizzle',55:'heavy drizzle',61:'light rain',63:'rain',65:'heavy rain',71:'light snow',73:'snow',75:'heavy snow',80:'showers',81:'showers',82:'heavy showers',95:'thunderstorm',99:'thunderstorm'};
+  let weatherOpen=false,weatherData=[];
+
+  async function fetchWeather(){
+    const lats=CITIES.map(c=>c.lat).join(',');
+    const lons=CITIES.map(c=>c.lon).join(',');
+    try{
+      const res=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,weathercode,windspeed_10m,relativehumidity_2m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`);
+      const data=await res.json();
+      const results=Array.isArray(data)?data:[data];
+      weatherData=results.map((d,i)=>({city:CITIES[i].name,temp:Math.round(d.current.temperature_2m),desc:WX[d.current.weathercode]||'unknown',wind:Math.round(d.current.windspeed_10m),humidity:Math.round(d.current.relativehumidity_2m),primary:CITIES[i].primary}));
+      const p=weatherData.find(w=>w.primary);
+      const o=weatherData.filter(w=>!w.primary);
+      document.getElementById('weather-main').innerHTML=`<div class="weather-primary"><span class="weather-city">${p.city}</span><span class="weather-temp">${p.temp}°F</span><span class="weather-desc">${p.desc}</span></div><div class="weather-extra"><span class="weather-stat">wind <span>${p.wind} mph</span></span><span class="weather-stat">humidity <span>${p.humidity}%</span></span></div>`;
+      document.getElementById('weather-others').innerHTML=o.map(w=>`<div class="weather-other-row"><span class="weather-other-city">${w.city}</span><span class="weather-other-temp">${w.temp}°F</span><span class="weather-other-desc">${w.desc}</span></div>`).join('');
+    }catch(e){document.getElementById('weather-main').innerHTML='<span class="weather-error">weather unavailable</span>';}
+  }
+
+  function toggleWeatherOthers(){
+    weatherOpen=!weatherOpen;
+    document.getElementById('weather-others').classList.toggle('open',weatherOpen);
+    document.getElementById('weather-toggle').textContent=weatherOpen?'[ - ]':'[ + ]';
+  }
+
+  // ── GITHUB ──
+  let ghLoaded=false;
+
+  function timeAgo(dateStr){
+    const diff=Date.now()-new Date(dateStr).getTime();
+    const m=Math.floor(diff/60000);
+    if(m<60)return`${m}m ago`;
+    const h=Math.floor(m/60);
+    if(h<24)return`${h}h ago`;
+    return`${Math.floor(h/24)}d ago`;
+  }
+
+  async function ghFetch(path){
+    const res=await fetch(`https://api.github.com${path}`,{headers:{Authorization:`token ${GH_TOKEN}`,Accept:'application/vnd.github+json'}});
+    if(!res.ok)throw new Error(res.status);
+    return res.json();
+  }
+
+  async function loadGitHub(){
+    if(ghLoaded)return;
+    ghLoaded=true;
+    try{
+      // Repos
+      const repos=await ghFetch(`/users/${GH_USER}/repos?sort=pushed&per_page=5`);
+      document.getElementById('gh-repos').innerHTML=repos.map(r=>`
+        <li class="gh-repo">
+          <span class="gh-repo-name">${r.name}</span>
+          <span class="gh-repo-stars">★ ${r.stargazers_count}</span>
+          <span class="gh-repo-pushed">${timeAgo(r.pushed_at)}</span>
+        </li>`).join('');
+
+      // Recent commits via events
+      const events=await ghFetch(`/users/${GH_USER}/events?per_page=30`);
+      const pushEvents=events.filter(e=>e.type==='PushEvent').slice(0,6);
+      const commits=pushEvents.flatMap(e=>e.payload.commits.slice(-1).map(c=>({
+        repo:e.repo.name.split('/')[1],
+        msg:c.message.split('\n')[0],
+        time:e.created_at
+      }))).slice(0,6);
+      document.getElementById('gh-commits').innerHTML=commits.length
+        ? commits.map(c=>`<li class="gh-commit"><span class="gh-commit-repo">${c.repo}</span><span class="gh-commit-msg">${c.msg}</span><span class="gh-commit-age">${timeAgo(c.time)}</span></li>`).join('')
+        : '<li class="gh-loading">no recent commits</li>';
+
+      // Streak via events
+      const allDays=new Set(events.filter(e=>e.type==='PushEvent').map(e=>e.created_at.slice(0,10)));
+      let streak=0,d=new Date();
+      while(true){
+        const key=d.toISOString().slice(0,10);
+        if(allDays.has(key)){streak++;d.setDate(d.getDate()-1);}
+        else break;
+      }
+      const total=allDays.size;
+      document.getElementById('gh-streak').innerHTML=`
+        <div class="gh-streak-row">
+          <span class="gh-streak-num">${streak}</span>
+          <span class="gh-streak-label">day streak</span>
+        </div>
+        <div class="gh-streak-sub">${total} active days in last 90 events</div>`;
+
+      // PRs & Issues
+      const prs=await ghFetch(`/search/issues?q=author:${GH_USER}+is:open+is:pr&per_page=4`);
+      const issues=await ghFetch(`/search/issues?q=author:${GH_USER}+is:open+is:issue&per_page=3`);
+      const combined=[...prs.items,...issues.items].slice(0,6);
+      document.getElementById('gh-prs').innerHTML=combined.length
+        ? combined.map(p=>{
+            const repo=p.repository_url.split('/').slice(-1)[0];
+            const type=p.pull_request?'pr':'issue';
+            return`<li class="gh-pr"><span class="gh-pr-repo">${repo}</span><span class="gh-pr-title">${p.title}</span><span class="gh-pr-state open">${type}</span></li>`;
+          }).join('')
+        : '<li class="gh-loading">no open prs or issues</li>';
+
+    }catch(e){
+      ['gh-streak','gh-commits','gh-repos','gh-prs'].forEach(id=>{
+        document.getElementById(id).innerHTML=`<span class="gh-error">failed to load — check token</span>`;
+      });
+    }
+  }
+
+  // ── SEARCH ──
+  document.getElementById('search').addEventListener('keydown',e=>{
+    if(e.key==='Enter'){const q=e.target.value.trim();if(q)window.location.href=`https://duckduckgo.com/?q=${encodeURIComponent(q)}`;}
+  });
+
+  // ── KEYBOARD SHORTCUTS ──
+  document.addEventListener('keydown',e=>{
+    if(document.activeElement.tagName==='INPUT')return;
+    const map={m:'https://mail.google.com',o:'https://overleaf.com',a:'https://claude.ai',g:'https://github.com/FerRomeroGalvan'};
+    if(map[e.key])window.open(map[e.key],'_blank');
+  });
+
+  // ── INIT ──
+  renderTodayLabel();
+  renderTasks(activeDayKey);
+  bindTaskInput(activeDayKey);
+  fetchWeather();
+</script>
+</body>
+</html>
