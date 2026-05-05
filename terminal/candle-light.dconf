@@ -1,0 +1,22 @@
+[/]
+default='657e9de3-df1b-4e7f-904f-ce8825836c34'
+list=['657e9de3-df1b-4e7f-904f-ce8825836c34']
+
+[:657e9de3-df1b-4e7f-904f-ce8825836c34]
+background-color='#0D0D0D'
+background-transparency-percent=6
+bold-color='#F5EFE0'
+bold-color-same-as-fg=false
+cursor-blink-mode='on'
+cursor-color='#D99962'
+cursor-shape='block'
+font='JetBrainsMono Nerd Font Mono 11'
+foreground-color='#F2F2F2'
+palette=['#0D0D0D', '#6B2A1A', '#698F64', '#4A3F30', '#6B5040', '#C8955A', '#7A6A55', '#C8C8C8', '#383838', '#C87932', '#3A5A3A', '#D99962', '#6B6055', '#E8E0D0', '#9E8E7A', '#F5EFE0']
+scrollback-unlimited=true
+scrollbar-policy='never'
+use-system-font=false
+use-theme-colors=false
+use-theme-transparency=false
+use-transparent-background=true
+visible-name='candle-light'
