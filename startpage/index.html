@@ -95,7 +95,7 @@
   .weather-header:hover .weather-toggle{color:var(--amber);}
   .weather-primary{display:flex;align-items:baseline;gap:1rem;margin-bottom:.5rem;}
   .weather-city{color:var(--amber);font-size:.85rem;}
-  .weather-temp{color:var(--ivory);font-size:0.85rem;font-weight:400;}
+  .weather-temp{color:var(--ivory);font-size:1.6rem;font-weight:200;}
   .weather-desc{color:var(--wick);font-size:.8rem;}
   .weather-extra{display:flex;gap:1.5rem;}
   .weather-stat{color:var(--shadow);font-size:.75rem;}
@@ -336,7 +336,7 @@
   function bindTaskInput(key){
     const inp=document.getElementById('task-input');
     inp.onkeydown=null;
-    inp.addEventListener('keydown',function(e){if(e.key==='Enter'){const v=e.target.value.trim();if(v){addTask(key,v);e.target.value='';}});
+    inp.addEventListener('keydown',function(e){if(e.key==='Enter'){const v=e.target.value.trim();if(v){addTask(key,v);e.target.value='';}}}); 
   }
 
   function showTab(tab){
