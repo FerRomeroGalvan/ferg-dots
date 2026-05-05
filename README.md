@@ -66,3 +66,8 @@ Then commit and push.
 - `undodir/` is tracked with a `.gitkeep` but its contents are gitignored
 - Python linting requires `ruff` and `mypy` on your `$PATH`
 - Nerd Fonts required for devicons (e.g. [JetBrains Mono Nerd Font](https://www.nerdfonts.com/))
+
+
+## Manual steps after install
+- System Settings > Startup Applications > Add polybar:
+    /home/inkycap/.config/polybar/launch.sh
