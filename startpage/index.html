@@ -597,24 +597,24 @@
   });
 
   // ── CANDLE INTERACTION ──
-  // Track mouse motion over the candle. Sustained fast/erratic motion
-  // builds "agitation" — past a threshold the flame goes out.
+  // Mouse motion over the FLAME (only) builds agitation. Past a high
+  // threshold the candle goes out.
   (function setupCandle(){
     const candle = document.querySelector('.candle');
-    if (!candle) return;
+    const flame  = document.querySelector('.flame');
+    if (!candle || !flame) return;
 
     let lastX = null, lastY = null, lastT = 0;
     let agitation = 0;
     let outTimer  = null;
-    let settleUntil = 0;        // grace period after relight
+    let settleUntil = 0;
     let cooldown  = null;
 
-    const AGITATION_THRESHOLD = 100;
+    const AGITATION_THRESHOLD = 350;   // higher — must work for it
     const RELIGHT_DELAY = 10000;
-    const SETTLE_PERIOD = 1500;     // ms of grace after relight
-    const DECAY_PER_TICK = 4;
+    const SETTLE_PERIOD = 1500;
+    const DECAY_PER_TICK = 8;          // also faster decay
 
-    // Continuous decay so casual hovering doesn't accumulate
     setInterval(() => {
       if (!candle.classList.contains('out')) {
         agitation = Math.max(0, agitation - DECAY_PER_TICK);
@@ -646,21 +646,18 @@
       settleUntil = performance.now() + SETTLE_PERIOD;
     }
 
-    candle.addEventListener('mousemove', (e) => {
+    // Bind motion tracking only to the flame element
+    flame.addEventListener('mousemove', (e) => {
       const now = performance.now();
-
-      // Skip motion while out OR during settle period
       if (candle.classList.contains('out') || now < settleUntil) {
         lastX = e.clientX; lastY = e.clientY; lastT = now;
         return;
       }
-
       if (lastX !== null) {
         const dx = e.clientX - lastX;
         const dy = e.clientY - lastY;
         const dt = Math.max(1, now - lastT);
         const speed = Math.sqrt(dx*dx + dy*dy) / dt * 100;
-
         if (speed > 5) {
           agitation += speed * 0.3;
           if (speed > 15) whoosh();
@@ -672,11 +669,11 @@
       lastT = now;
     });
 
-    candle.addEventListener('mouseleave', () => {
+    flame.addEventListener('mouseleave', () => {
       lastX = lastY = null;
     });
 
-    // Click while out → relight immediately
+    // Click anywhere on the candle to relight while out
     candle.addEventListener('click', () => {
       if (candle.classList.contains('out')) {
         clearTimeout(outTimer);
