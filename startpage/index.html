@@ -597,8 +597,6 @@
   });
 
   // ── CANDLE INTERACTION ──
-  // Mouse motion over the FLAME (only) builds agitation. Past a high
-  // threshold the candle goes out.
   (function setupCandle(){
     const candle = document.querySelector('.candle');
     const flame  = document.querySelector('.flame');
@@ -610,10 +608,11 @@
     let settleUntil = 0;
     let cooldown  = null;
 
-    const AGITATION_THRESHOLD = 350;   // higher — must work for it
+    const AGITATION_THRESHOLD = 1500;   // very hard to reach
     const RELIGHT_DELAY = 10000;
     const SETTLE_PERIOD = 1500;
-    const DECAY_PER_TICK = 8;          // also faster decay
+    const DECAY_PER_TICK = 25;          // aggressive decay
+    const SPEED_MULT = 0.05;             // single swipes barely contribute
 
     setInterval(() => {
       if (!candle.classList.contains('out')) {
@@ -646,7 +645,6 @@
       settleUntil = performance.now() + SETTLE_PERIOD;
     }
 
-    // Bind motion tracking only to the flame element
     flame.addEventListener('mousemove', (e) => {
       const now = performance.now();
       if (candle.classList.contains('out') || now < settleUntil) {
@@ -658,10 +656,12 @@
         const dy = e.clientY - lastY;
         const dt = Math.max(1, now - lastT);
         const speed = Math.sqrt(dx*dx + dy*dy) / dt * 100;
-        if (speed > 5) {
-          agitation += speed * 0.3;
-          if (speed > 15) whoosh();
+        if (speed > 8) {
+          agitation += speed * SPEED_MULT;
+          if (speed > 20) whoosh();
         }
+        // Uncomment to debug:
+        // console.log('speed:', speed.toFixed(1), 'agitation:', agitation.toFixed(0));
         if (agitation > AGITATION_THRESHOLD) blowOut();
       }
       lastX = e.clientX;
@@ -673,7 +673,6 @@
       lastX = lastY = null;
     });
 
-    // Click anywhere on the candle to relight while out
     candle.addEventListener('click', () => {
       if (candle.classList.contains('out')) {
         clearTimeout(outTimer);
