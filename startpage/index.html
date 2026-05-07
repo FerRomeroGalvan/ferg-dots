@@ -11,25 +11,25 @@
     --fg:#F2F2F2;--ivory:#F5EFE0;--bone:#E8E0D0;
     --amber:#D99962;--wax:#C8955A;--wick:#7A6A55;
     --shadow:#555555;--dim:#383838;--ember:#6B2A1A;
-    --page-w: 500px;
-    --base-fs: 13px;
-    --candle-fs: 12px;
+    --page-w: 540px;
+    --base-fs: 15px;
+    --candle-fs: 16px;
   }
-  /* tablet — slightly more breathing room */
+  /* tablet */
   @media (min-width: 768px) {
-    :root { --page-w: 580px; --candle-fs: 14px; }
+    :root { --page-w: 640px; --base-fs: 16px; --candle-fs: 20px; }
   }
-  /* desktop — comfortable reading width */
+  /* desktop */
   @media (min-width: 1280px) {
-    :root { --page-w: 680px; --base-fs: 14px; --candle-fs: 18px; }
+    :root { --page-w: 760px; --base-fs: 17px; --candle-fs: 26px; }
   }
-  /* large desktop / curved monitor — wider but not absurd */
+  /* large / curved monitor */
   @media (min-width: 1920px) {
-    :root { --page-w: 820px; --base-fs: 15px; --candle-fs: 24px; }
+    :root { --page-w: 920px; --base-fs: 19px; --candle-fs: 34px; }
   }
-  /* phone — tighter padding, full width */
+  /* phone */
   @media (max-width: 480px) {
-    :root { --page-w: 100%; --base-fs: 12px; --candle-fs: 11px; }
+    :root { --page-w: 100%; --base-fs: 14px; --candle-fs: 14px; }
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{min-height:100vh;background:var(--bg);color:var(--fg);font-family:'JetBrains Mono',monospace;font-size:var(--base-fs);line-height:1.6;}
