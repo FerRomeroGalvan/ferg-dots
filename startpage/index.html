@@ -346,6 +346,14 @@
   .weather-temp{color:var(--bone);font-size:.95rem;font-weight:400;}
   .weather-desc{color:var(--wick);font-size:.75rem;flex:1;}
   .weather-extra{display:flex;gap:1.2rem;}
+  .weather-notable{
+    margin-top:.5rem;
+    color:var(--wick);
+    font-size:.78rem;
+    letter-spacing:.01em;
+  }
+  .weather-notable strong{color:var(--amber);font-weight:500;}
+  .weather-notable .sep{color:var(--dim);}
   .weather-stat{color:var(--mute);font-size:.7rem;}
   .weather-stat span{color:var(--wick);}
   /* 7-day forecast — sparkline-based */
@@ -448,6 +456,14 @@
     transition:opacity .15s;
   }
   .link:hover .link-key{opacity:1;}
+  .link-visited{
+    color:var(--dim);
+    font-size:.65rem;
+    margin-left:.4rem;
+    opacity:0;
+    transition:opacity .15s;
+  }
+  .link:hover .link-visited{opacity:1;}
 
   /* ── GITHUB WORKSPACE ── */
   .gh-section{width:100%;}
@@ -457,6 +473,27 @@
   .gh-loading{color:var(--dim);font-size:.8rem;}
   .gh-error{color:var(--ember);font-size:.75rem;}
 
+  /* ── GITHUB workspace hero ── */
+  .gh-hero{
+    width:100%;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:baseline;
+    gap:.4rem 1rem;
+    padding:1rem 0 1.5rem;
+    border-bottom:1px solid var(--dim);
+    margin-bottom:.5rem;
+    color:var(--wick);
+    font-size:1rem;
+    line-height:1.4;
+  }
+  .gh-hero strong{
+    color:var(--amber);
+    font-weight:500;
+  }
+  .gh-hero .sep{color:var(--dim);}
+  .gh-hero .gh-loading{color:var(--mute);font-size:.85rem;}
+  .gh-hero .calm{color:var(--wax);}    /* "all caught up" mood */
   .gh-streak-row{display:flex;align-items:baseline;gap:1rem;margin-bottom:.25rem;}
   .gh-streak-num{color:var(--amber);font-size:1.8rem;font-weight:200;}
   .gh-streak-label{color:var(--wick);font-size:.8rem;}
@@ -579,17 +616,17 @@
   <div class="links-wrap">
     <div class="links-label">// bookmarks</div>
     <div class="links-row">
-      <a class="link" href="https://mail.google.com" target="_blank">
-        <span class="link-icon">✉</span><span>gmail</span><span class="link-key">[m]</span>
+      <a class="link" data-bookmark="gmail" href="https://mail.google.com" target="_blank">
+        <span class="link-icon">✉</span><span>gmail</span><span class="link-visited"></span><span class="link-key">[m]</span>
       </a>
-      <a class="link" href="https://overleaf.com" target="_blank">
-        <span class="link-icon">◈</span><span>overleaf</span><span class="link-key">[o]</span>
+      <a class="link" data-bookmark="overleaf" href="https://overleaf.com" target="_blank">
+        <span class="link-icon">◈</span><span>overleaf</span><span class="link-visited"></span><span class="link-key">[o]</span>
       </a>
-      <a class="link" href="https://claude.ai" target="_blank">
-        <span class="link-icon">◆</span><span>claude</span><span class="link-key">[a]</span>
+      <a class="link" data-bookmark="claude" href="https://claude.ai" target="_blank">
+        <span class="link-icon">◆</span><span>claude</span><span class="link-visited"></span><span class="link-key">[a]</span>
       </a>
-      <a class="link" href="https://github.com/FerRomeroGalvan" target="_blank">
-        <span class="link-icon">⌥</span><span>github</span><span class="link-key">[g]</span>
+      <a class="link" data-bookmark="github" href="https://github.com/FerRomeroGalvan" target="_blank">
+        <span class="link-icon">⌥</span><span>github</span><span class="link-visited"></span><span class="link-key">[g]</span>
       </a>
     </div>
   </div>
@@ -598,12 +635,9 @@
 <!-- WORKSPACE VIEW -->
 <div class="view" id="view-workspace">
 
-  <div class="gh-section">
-    <div class="gh-header">
-      <span class="gh-label">// streak</span>
-      <span class="gh-meta" id="gh-streak-meta"></span>
-    </div>
-    <div id="gh-streak"><span class="gh-loading">loading...</span></div>
+  <!-- Hero summary line -->
+  <div class="gh-hero" id="gh-hero">
+    <span class="gh-loading">loading workspace...</span>
   </div>
 
   <div class="gh-section">
@@ -931,7 +965,8 @@
         <span class="weather-stat">lo <span>${p.lo}°</span></span>
         <span class="weather-stat">wind <span>${p.wind} mph</span></span>
         <span class="weather-stat">humidity <span>${p.humidity}%</span></span>
-      </div>`;
+      </div>
+      ${renderWeatherNotable(p)}`;
 
     if (p.daily && p.hourly) renderForecast(p);
 
@@ -954,6 +989,49 @@
         renderWeatherView();
       };
     });
+  }
+
+  // Detect notable change between today and tomorrow
+  function renderWeatherNotable(p){
+    if (!p.daily || p.daily.temperature_2m_max.length < 2) return '';
+    const todayHi = p.daily.temperature_2m_max[0];
+    const todayLo = p.daily.temperature_2m_min[0];
+    const tomHi   = p.daily.temperature_2m_max[1];
+    const tomLo   = p.daily.temperature_2m_min[1];
+    const todayCode = p.daily.weathercode[0];
+    const tomCode   = p.daily.weathercode[1];
+
+    const wetCodes = [51,53,55,61,63,65,71,73,75,80,81,82,95,99];
+    const isWetToday = wetCodes.includes(todayCode);
+    const isWetTomorrow = wetCodes.includes(tomCode);
+
+    const hiDelta = Math.round(tomHi - todayHi);
+    const loDelta = Math.round(tomLo - todayLo);
+
+    const notes = [];
+
+    // Big temperature swing
+    if (Math.abs(hiDelta) >= 10) {
+      const dir = hiDelta > 0 ? 'warmer' : 'cooler';
+      notes.push(`tomorrow <strong>${Math.abs(hiDelta)}° ${dir}</strong>`);
+    }
+
+    // Precipitation arriving
+    if (!isWetToday && isWetTomorrow) {
+      notes.push(`<strong>${WX[tomCode] || 'precipitation'}</strong> tomorrow`);
+    }
+    // Precipitation clearing
+    if (isWetToday && !isWetTomorrow) {
+      notes.push(`<strong>clearing</strong> tomorrow`);
+    }
+
+    // Frosty overnight
+    if (tomLo <= 32 && todayLo > 32) {
+      notes.push(`<strong>freezing</strong> overnight`);
+    }
+
+    if (notes.length === 0) return '';
+    return `<div class="weather-notable">${notes.join('<span class="sep"> · </span>')}</div>`;
   }
 
   function renderForecast(p){
@@ -1027,9 +1105,11 @@
   // ── GITHUB ──
   let ghLoaded=false;
 
-  function timeAgo(dateStr){
-    const diff=Date.now()-new Date(dateStr).getTime();
+  function timeAgo(input){
+    const t = (typeof input === 'number') ? input : new Date(input).getTime();
+    const diff=Date.now()-t;
     const m=Math.floor(diff/60000);
+    if(m<1) return 'just now';
     if(m<60)return`${m}m ago`;
     const h=Math.floor(m/60);
     if(h<24)return`${h}h ago`;
@@ -1037,9 +1117,7 @@
   }
 
   async function ghFetch(path, token){
-    console.log('fetching', path);
     const res=await fetch(`https://api.github.com${path}`,{headers:{Authorization:`token ${token}`,Accept:'application/vnd.github+json'}});
-    console.log('response', res.status);
     if(!res.ok)throw new Error(res.status);
     return res.json();
   }
@@ -1056,7 +1134,6 @@
         .flat()
         .sort((a,b)=>new Date(b.pushed_at)-new Date(a.pushed_at))
         .slice(0,5);
-      console.log('repos', repos);
       document.getElementById('gh-repos').innerHTML=repos.map(r=>`
         <li class="gh-repo">
           <span class="gh-repo-name">${r.full_name}</span>
@@ -1071,7 +1148,6 @@
       const events=eventResults
         .flat()
         .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-      console.log('events', events);
       const pushEvents=events.filter(e=>e.type==='PushEvent'&&e.payload&&Array.isArray(e.payload.commits)&&e.payload.commits.length>0).slice(0,6);
       const commits=pushEvents.flatMap(e=>e.payload.commits.slice(-1).map(c=>({
         repo:e.repo.name,
@@ -1090,21 +1166,18 @@
         if(allDays.has(key)){streak++;d.setDate(d.getDate()-1);}
         else break;
       }
-      const total=allDays.size;
-      document.getElementById('gh-streak').innerHTML=`
-        <div class="gh-streak-row">
-          <span class="gh-streak-num">${streak}</span>
-          <span class="gh-streak-label">day streak</span>
-        </div>
-        <div class="gh-streak-sub">${total} active days across ${GH_ACCOUNTS.length} accounts</div>`;
 
-      // PRs & Issues (primary account only)
-      const primary=GH_ACCOUNTS[0];
-      const prs=await ghFetch(`/search/issues?q=author:${primary.user}+is:open+is:pr&per_page=4`,primary.token);
-      const issues=await ghFetch(`/search/issues?q=author:${primary.user}+is:open+is:issue&per_page=3`,primary.token);
-      console.log('prs', prs);
-      console.log('issues', issues);
-      const combined=[...prs.items,...issues.items].slice(0,6);
+      // PRs & Issues across both accounts
+      const prResults=await Promise.all(
+        GH_ACCOUNTS.map(a=>ghFetch(`/search/issues?q=author:${a.user}+is:open+is:pr&per_page=4`,a.token))
+      );
+      const issueResults=await Promise.all(
+        GH_ACCOUNTS.map(a=>ghFetch(`/search/issues?q=author:${a.user}+is:open+is:issue&per_page=3`,a.token))
+      );
+      const allPrs    = prResults.flatMap(r=>r.items||[]);
+      const allIssues = issueResults.flatMap(r=>r.items||[]);
+      const combined=[...allPrs, ...allIssues].slice(0,6);
+
       document.getElementById('gh-prs').innerHTML=combined.length
         ? combined.map(p=>{
             const repo=p.repository_url.split('/').slice(-1)[0];
@@ -1113,12 +1186,53 @@
           }).join('')
         : '<li class="gh-loading">no open prs or issues</li>';
 
+      // Build the hero summary line
+      renderGitHubHero({
+        streak,
+        lastCommit: commits[0],
+        prCount: allPrs.length,
+        issueCount: allIssues.length,
+        repoCount: repos.length
+      });
+
     }catch(e){
       console.error('GitHub load error:', e);
-      ['gh-streak','gh-commits','gh-repos','gh-prs'].forEach(id=>{
-        document.getElementById(id).innerHTML=`<span class="gh-error">failed to load — check token</span>`;
+      document.getElementById('gh-hero').innerHTML =
+        `<span class="gh-error">failed to load — check token</span>`;
+      ['gh-commits','gh-repos','gh-prs'].forEach(id=>{
+        document.getElementById(id).innerHTML=`<span class="gh-error">failed to load</span>`;
       });
     }
+  }
+
+  function renderGitHubHero({ streak, lastCommit, prCount, issueCount, repoCount }) {
+    const parts = [];
+
+    // Streak
+    if (streak > 0) {
+      parts.push(`<strong>${streak}d</strong> streak`);
+    } else {
+      parts.push(`<span class="calm">no streak yet</span>`);
+    }
+
+    // Last commit
+    if (lastCommit) {
+      const repo = lastCommit.repo.split('/').slice(-1)[0];
+      parts.push(`last pushed to <strong>${repo}</strong> ${timeAgo(lastCommit.time)}`);
+    }
+
+    // PRs / issues
+    if (prCount > 0 || issueCount > 0) {
+      const bits = [];
+      if (prCount > 0)    bits.push(`<strong>${prCount} PR${prCount===1?'':'s'}</strong>`);
+      if (issueCount > 0) bits.push(`<strong>${issueCount} issue${issueCount===1?'':'s'}</strong>`);
+      parts.push(bits.join(' & ') + ' open');
+    } else if (lastCommit) {
+      parts.push(`<span class="calm">all caught up</span>`);
+    }
+
+    document.getElementById('gh-hero').innerHTML =
+      parts.join('<span class="sep"> · </span>');
   }
 
   // ── SEARCH ──
@@ -1152,11 +1266,45 @@
   });
 
   // ── KEYBOARD SHORTCUTS ──
+  // Map: key → bookmark name (matches data-bookmark attrs)
+  const KEY_MAP = {m:'gmail', o:'overleaf', a:'claude', g:'github'};
   document.addEventListener('keydown',e=>{
     if(document.activeElement.tagName==='INPUT')return;
-    const map={m:'https://mail.google.com',o:'https://overleaf.com',a:'https://claude.ai',g:'https://github.com/FerRomeroGalvan'};
-    if(map[e.key])window.open(map[e.key],'_blank');
+    const name = KEY_MAP[e.key];
+    if (!name) return;
+    const link = document.querySelector(`[data-bookmark="${name}"]`);
+    if (link) {
+      trackBookmarkClick(name);
+      window.open(link.href, '_blank');
+    }
   });
+
+  // ── BOOKMARK LAST-VISITED TRACKING ──
+  const VISITED_KEY = 'candle-visits';
+  function getVisits(){
+    try { return JSON.parse(localStorage.getItem(VISITED_KEY) || '{}'); }
+    catch { return {}; }
+  }
+  function trackBookmarkClick(name){
+    const v = getVisits();
+    v[name] = Date.now();
+    localStorage.setItem(VISITED_KEY, JSON.stringify(v));
+    renderVisits();
+  }
+  function renderVisits(){
+    const v = getVisits();
+    document.querySelectorAll('.link[data-bookmark]').forEach(link => {
+      const name = link.dataset.bookmark;
+      const span = link.querySelector('.link-visited');
+      if (!span) return;
+      span.textContent = v[name] ? timeAgo(v[name]) : 'never';
+    });
+  }
+  // Wire up clicks
+  document.querySelectorAll('.link[data-bookmark]').forEach(link => {
+    link.addEventListener('click', () => trackBookmarkClick(link.dataset.bookmark));
+  });
+  renderVisits();
 
   // ── CANDLE INTERACTION ──
   (function setupCandle(){
