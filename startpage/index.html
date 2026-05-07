@@ -1036,7 +1036,11 @@
 
   function renderForecast(p){
     const dows=['sun','mon','tue','wed','thu','fri','sat'];
-    const today=new Date().toISOString().slice(0,10);
+    // Build today's key in LOCAL time (not UTC) so it matches Open-Meteo's
+    // timezone=auto response — otherwise late-evening Pacific becomes
+    // tomorrow in UTC and "today" highlights the wrong day
+    const n = new Date();
+    const today = `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
 
     // Find global min/max across the week so all sparklines share scale
     const allTemps = p.hourly.temperature_2m.filter(t => t != null);
