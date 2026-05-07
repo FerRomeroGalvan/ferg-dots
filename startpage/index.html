@@ -49,11 +49,29 @@
   .view.active{display:flex;}
 
   /* ── CANDLE ── */
-  .candle{text-align:center;}
-  .flame{color:var(--amber);font-size:12px;line-height:1.35;animation:flicker 3s ease-in-out infinite;display:block;}
-  .wax-body{color:var(--wax);font-size:12px;line-height:1.35;display:block;}
-  .wax-base{color:var(--wick);font-size:12px;line-height:1.35;display:block;}
+  .candle{text-align:center;cursor:default;user-select:none;}
+  .flame{color:var(--amber);font-size:12px;line-height:1.35;display:block;animation:flicker 3s ease-in-out infinite;transition:opacity .4s ease, transform .15s ease, color .4s ease;transform-origin:center bottom;}
+  /* whoosh — flame is being disturbed */
+  .candle.whoosh .flame{animation:whoosh .25s ease-in-out;color:#F5EFE0;}
+  /* out — candle has been blown out, smoke instead of flame */
+  .candle.out .flame{
+    animation:none;
+    color:var(--shadow);
+    opacity:.4;
+    transform:scaleY(.3) translateY(8px);
+  }
+  .wax-body{color:var(--wax);font-size:12px;line-height:1.35;display:block;transition:color .4s ease;}
+  .wax-base{color:var(--wick);font-size:12px;line-height:1.35;display:block;transition:color .4s ease;}
+  .candle.out .wax-body{color:var(--wick);}
+  .candle.out .wax-base{color:var(--dim);}
   @keyframes flicker{0%,100%{opacity:1;transform:scaleX(1);}25%{opacity:.85;transform:scaleX(.97) translateX(1px);}50%{opacity:.95;transform:scaleX(1.02) translateX(-1px);}75%{opacity:.9;transform:scaleX(.98) translateX(1px);}}
+  @keyframes whoosh{
+    0%   { transform:scaleX(1)    skewX(0deg)  translateX(0); }
+    25%  { transform:scaleX(0.7)  skewX(-12deg) translateX(-4px); opacity:.8; }
+    55%  { transform:scaleX(1.3)  skewX(8deg)  translateX(3px);  opacity:1; }
+    80%  { transform:scaleX(0.85) skewX(-4deg) translateX(-1px); }
+    100% { transform:scaleX(1)    skewX(0deg)  translateX(0); }
+  }
 
   /* ── SEARCH ── */
   .search-wrap{width:100%;}
@@ -547,6 +565,88 @@
     const map={m:'https://mail.google.com',o:'https://overleaf.com',a:'https://claude.ai',g:'https://github.com/FerRomeroGalvan'};
     if(map[e.key])window.open(map[e.key],'_blank');
   });
+
+  // ── CANDLE INTERACTION ──
+  // Track recent mouse motion over the candle. If movement is fast/erratic
+  // for a sustained period, the candle goes out.
+  (function setupCandle(){
+    const candle = document.querySelector('.candle');
+    if (!candle) return;
+
+    let lastX = null, lastY = null, lastT = 0;
+    let agitation = 0;          // accumulated "wind" energy
+    let outTimer  = null;
+    let whooshOn  = false;
+    let whooshTimer = null;
+    let cooldown  = null;       // throttle whoosh animation
+
+    const AGITATION_THRESHOLD = 100;  // ~ how much shaking before it goes out
+    const RELIGHT_DELAY = 10000;       // ms before it relights
+    const DECAY_PER_SECOND = 30;       // agitation drops over time
+
+    // Decay agitation over time so casual hovering doesn't accumulate forever
+    setInterval(() => {
+      agitation = Math.max(0, agitation - DECAY_PER_SECOND/10);
+    }, 100);
+
+    function whoosh(){
+      if (candle.classList.contains('out')) return;
+      if (cooldown) return;
+      candle.classList.add('whoosh');
+      cooldown = setTimeout(() => {
+        candle.classList.remove('whoosh');
+        cooldown = null;
+      }, 250);
+    }
+
+    function blowOut(){
+      if (candle.classList.contains('out')) return;
+      candle.classList.add('out');
+      candle.classList.remove('whoosh');
+      // Relight after delay
+      outTimer = setTimeout(() => {
+        candle.classList.remove('out');
+        outTimer = null;
+        agitation = 0;
+      }, RELIGHT_DELAY);
+    }
+
+    candle.addEventListener('mousemove', (e) => {
+      const now = performance.now();
+      if (lastX !== null) {
+        const dx = e.clientX - lastX;
+        const dy = e.clientY - lastY;
+        const dt = Math.max(1, now - lastT);
+        const speed = Math.sqrt(dx*dx + dy*dy) / dt * 100;  // px per ~100ms
+
+        if (speed > 5) {
+          agitation += speed * 0.3;
+          if (speed > 15) whoosh();
+        }
+
+        if (agitation > AGITATION_THRESHOLD) {
+          blowOut();
+          agitation = 0;
+        }
+      }
+      lastX = e.clientX;
+      lastY = e.clientY;
+      lastT = now;
+    });
+
+    candle.addEventListener('mouseleave', () => {
+      lastX = lastY = null;
+    });
+
+    // Click the candle to manually relight (useful while it's out)
+    candle.addEventListener('click', () => {
+      if (candle.classList.contains('out')) {
+        clearTimeout(outTimer);
+        candle.classList.remove('out');
+        agitation = 0;
+      }
+    });
+  })();
 
   // ── INIT ──
   renderTodayLabel();
