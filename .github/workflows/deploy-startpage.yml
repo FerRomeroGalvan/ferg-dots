@@ -27,11 +27,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Inject token
+      - name: Inject tokens
         run: |
           mkdir -p _site
-          sed 's/__GH_TOKEN__/${{ secrets.STARTPAGE_GH_TOKEN }}/g' \
-            startpage/index.html > _site/index.html
+          sed -e 's/__GH_TOKEN__/${{ secrets.STARTPAGE_GH_TOKEN }}/g' \
+              -e 's/__GH_TOKEN_DWR__/${{ secrets.STARTPAGE_GH_TOKEN_DWR }}/g' \
+              startpage/index.html > _site/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
