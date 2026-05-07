@@ -442,22 +442,30 @@
     try{
       // Repos
       const repos=await ghFetch(`/users/${GH_USER}/repos?sort=pushed&per_page=5`);
+      console.log('repos', repos);
       document.getElementById('gh-repos').innerHTML=repos.map(r=>`
         <li class="gh-repo">
           <span class="gh-repo-name">${r.name}</span>
           <span class="gh-repo-stars">★ ${r.stargazers_count}</span>
           <span class="gh-repo-pushed">${timeAgo(r.pushed_at)}</span>
         </li>`).join('');
-      console.log('repos', repos);
+      
       // Recent commits via events
       const events=await ghFetch(`/users/${GH_USER}/events?per_page=30`);
       console.log('events', events);
       const pushEvents=events.filter(e=>e.type==='PushEvent').slice(0,6);
-      const commits=pushEvents.flatMap(e=>e.payload.commits.slice(-1).map(c=>({
-        repo:e.repo.name.split('/')[1],
-        msg:c.message.split('\n')[0],
-        time:e.created_at
-      }))).slice(0,6);
+      const commits=pushEvents.flatMap(e=>{
+        try{
+          return e.payload.commits.slice(-1).map(c=>({
+            repo:e.repo.name.split('/')[1],
+            msg:c.message.split('\n')[0],
+            time:e.created_at
+          }));
+        }catch(err){
+          console.error('error processing commit', e, err);
+          return[];
+        }
+      }).slice(0,6);
       document.getElementById('gh-commits').innerHTML=commits.length
         ? commits.map(c=>`<li class="gh-commit"><span class="gh-commit-repo">${c.repo}</span><span class="gh-commit-msg">${c.msg}</span><span class="gh-commit-age">${timeAgo(c.time)}</span></li>`).join('')
         : '<li class="gh-loading">no recent commits</li>';
@@ -481,6 +489,8 @@
       // PRs & Issues
       const prs=await ghFetch(`/search/issues?q=author:${GH_USER}+is:open+is:pr&per_page=4`);
       const issues=await ghFetch(`/search/issues?q=author:${GH_USER}+is:open+is:issue&per_page=3`);
+      console.log('prs', prs);
+      console.log('issues', issues);
       const combined=[...prs.items,...issues.items].slice(0,6);
       document.getElementById('gh-prs').innerHTML=combined.length
         ? combined.map(p=>{
@@ -491,6 +501,7 @@
         : '<li class="gh-loading">no open prs or issues</li>';
 
     }catch(e){
+      console.error('GitHub load error:', e);
       ['gh-streak','gh-commits','gh-repos','gh-prs'].forEach(id=>{
         document.getElementById(id).innerHTML=`<span class="gh-error">failed to load — check token</span>`;
       });
