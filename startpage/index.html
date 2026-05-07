@@ -63,6 +63,30 @@
   }
   .wax-body{color:var(--wax);font-size:var(--candle-fs);line-height:1.35;display:block;transition:color .4s ease;}
   .wax-base{color:var(--wick);font-size:var(--candle-fs);line-height:1.35;display:block;transition:color .4s ease;}
+  /* smoke — only visible when candle is out */
+  .smoke{
+    color:var(--shadow);
+    font-size:var(--candle-fs);
+    line-height:1;
+    display:block;
+    opacity:0;
+    height:0;
+    overflow:visible;
+    transition:opacity .3s ease;
+    pointer-events:none;
+    margin-bottom:0;
+  }
+  .candle.out .smoke{
+    opacity:.5;
+    animation:smokeRise 2.5s ease-out infinite;
+  }
+  @keyframes smokeRise{
+    0%   { opacity:0;   transform:translateY(0)    translateX(0); }
+    20%  { opacity:.6;  transform:translateY(-4px) translateX(1px); }
+    50%  { opacity:.4;  transform:translateY(-12px) translateX(-2px); }
+    80%  { opacity:.2;  transform:translateY(-22px) translateX(2px); }
+    100% { opacity:0;   transform:translateY(-32px) translateX(-1px); }
+  }
   .candle.out .wax-body{color:var(--wick);}
   .candle.out .wax-base{color:var(--dim);}
   @keyframes flicker{0%,100%{opacity:1;transform:scaleX(1);}25%{opacity:.85;transform:scaleX(.97) translateX(1px);}50%{opacity:.95;transform:scaleX(1.02) translateX(-1px);}75%{opacity:.9;transform:scaleX(.98) translateX(1px);}}
@@ -208,6 +232,11 @@
 <!-- HOME VIEW -->
 <div class="view active" id="view-home">
   <div class="candle">
+    <pre class="smoke">  ╭
+ ╮
+  ╯
+ ╭
+  </pre>
     <pre class="flame">    )
    ) \
   / ) (
@@ -568,26 +597,28 @@
   });
 
   // ── CANDLE INTERACTION ──
-  // Track recent mouse motion over the candle. If movement is fast/erratic
-  // for a sustained period, the candle goes out.
+  // Track mouse motion over the candle. Sustained fast/erratic motion
+  // builds "agitation" — past a threshold the flame goes out.
   (function setupCandle(){
     const candle = document.querySelector('.candle');
     if (!candle) return;
 
     let lastX = null, lastY = null, lastT = 0;
-    let agitation = 0;          // accumulated "wind" energy
+    let agitation = 0;
     let outTimer  = null;
-    let whooshOn  = false;
-    let whooshTimer = null;
-    let cooldown  = null;       // throttle whoosh animation
+    let settleUntil = 0;        // grace period after relight
+    let cooldown  = null;
 
-    const AGITATION_THRESHOLD = 100;  // ~ how much shaking before it goes out
-    const RELIGHT_DELAY = 10000;       // ms before it relights
-    const DECAY_PER_SECOND = 30;       // agitation drops over time
+    const AGITATION_THRESHOLD = 100;
+    const RELIGHT_DELAY = 10000;
+    const SETTLE_PERIOD = 1500;     // ms of grace after relight
+    const DECAY_PER_TICK = 4;
 
-    // Decay agitation over time so casual hovering doesn't accumulate forever
+    // Continuous decay so casual hovering doesn't accumulate
     setInterval(() => {
-      agitation = Math.max(0, agitation - DECAY_PER_SECOND/10);
+      if (!candle.classList.contains('out')) {
+        agitation = Math.max(0, agitation - DECAY_PER_TICK);
+      }
     }, 100);
 
     function whoosh(){
@@ -604,31 +635,37 @@
       if (candle.classList.contains('out')) return;
       candle.classList.add('out');
       candle.classList.remove('whoosh');
-      // Relight after delay
-      outTimer = setTimeout(() => {
-        candle.classList.remove('out');
-        outTimer = null;
-        agitation = 0;
-      }, RELIGHT_DELAY);
+      agitation = 0;
+      outTimer = setTimeout(relight, RELIGHT_DELAY);
+    }
+
+    function relight(){
+      candle.classList.remove('out');
+      outTimer = null;
+      agitation = 0;
+      settleUntil = performance.now() + SETTLE_PERIOD;
     }
 
     candle.addEventListener('mousemove', (e) => {
       const now = performance.now();
+
+      // Skip motion while out OR during settle period
+      if (candle.classList.contains('out') || now < settleUntil) {
+        lastX = e.clientX; lastY = e.clientY; lastT = now;
+        return;
+      }
+
       if (lastX !== null) {
         const dx = e.clientX - lastX;
         const dy = e.clientY - lastY;
         const dt = Math.max(1, now - lastT);
-        const speed = Math.sqrt(dx*dx + dy*dy) / dt * 100;  // px per ~100ms
+        const speed = Math.sqrt(dx*dx + dy*dy) / dt * 100;
 
         if (speed > 5) {
           agitation += speed * 0.3;
           if (speed > 15) whoosh();
         }
-
-        if (agitation > AGITATION_THRESHOLD) {
-          blowOut();
-          agitation = 0;
-        }
+        if (agitation > AGITATION_THRESHOLD) blowOut();
       }
       lastX = e.clientX;
       lastY = e.clientY;
@@ -639,12 +676,11 @@
       lastX = lastY = null;
     });
 
-    // Click the candle to manually relight (useful while it's out)
+    // Click while out → relight immediately
     candle.addEventListener('click', () => {
       if (candle.classList.contains('out')) {
         clearTimeout(outTimer);
-        candle.classList.remove('out');
-        agitation = 0;
+        relight();
       }
     });
   })();
