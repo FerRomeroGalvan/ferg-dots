@@ -448,9 +448,10 @@
           <span class="gh-repo-stars">★ ${r.stargazers_count}</span>
           <span class="gh-repo-pushed">${timeAgo(r.pushed_at)}</span>
         </li>`).join('');
-
+      console.log('repos', repos);
       // Recent commits via events
       const events=await ghFetch(`/users/${GH_USER}/events?per_page=30`);
+      console.log('events', events);
       const pushEvents=events.filter(e=>e.type==='PushEvent').slice(0,6);
       const commits=pushEvents.flatMap(e=>e.payload.commits.slice(-1).map(c=>({
         repo:e.repo.name.split('/')[1],
