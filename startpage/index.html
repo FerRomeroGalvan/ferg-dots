@@ -277,6 +277,26 @@
   .task-del{margin-left:auto;color:var(--dim);font-size:.8rem;opacity:0;transition:opacity .15s;cursor:pointer;flex-shrink:0;}
   .task-item:hover .task-del{opacity:1;}
   .task-del:hover{color:var(--ember);}
+  /* Due-date pill: small, dimmed, sits before delete button */
+  .task-due{
+    margin-left:auto;
+    color:var(--mute);
+    font-size:.72rem;
+    letter-spacing:.02em;
+    flex-shrink:0;
+    padding:.05rem .35rem;
+    border:1px solid var(--dim);
+    border-radius:2px;
+    transition:color .15s, border-color .15s, background .15s;
+  }
+  .task-item:hover .task-due{color:var(--wick);}
+  /* When the task has a due-date, the delete button needs its own gap */
+  .task-item .task-due + .task-del{margin-left:.5rem;}
+  /* States */
+  .task-item.due-soon  .task-due{color:var(--wax);border-color:var(--wax);}
+  .task-item.due-today .task-due{color:var(--amber);border-color:var(--amber);background:rgba(217,153,98,.06);}
+  .task-item.overdue   .task-due{color:#CC6666;border-color:#6B2A1A;background:rgba(107,42,26,.15);}
+  .task-item.overdue   .task-text{color:var(--bone);}
   /* Done section — collapsed by default once 3+ items */
   .done-toggle{
     background:none;
@@ -522,7 +542,7 @@
       </div>
       <div class="task-input-row">
         <span class="task-caret">+</span>
-        <input class="task-input" id="task-input" type="text" placeholder="add a task...">
+        <input class="task-input" id="task-input" type="text" placeholder="add a task... (try: read paper due:fri)">
       </div>
       <ul class="task-list" id="task-list"></ul>
       <button class="done-toggle" id="done-toggle" style="display:none" onclick="toggleDone()"></button>
@@ -651,12 +671,106 @@
 
   let doneCollapsed = true;
 
+  // ── Due-date parser (taskwarrior-inspired) ──
+  // Accepts: due:today | due:tomorrow | due:yesterday | due:mon..sun
+  //          due:YYYY-MM-DD | with optional +HH:MM or +9am suffix
+  function parseDue(text){
+    const m = text.match(/\bdue:(\S+)/i);
+    if (!m) return { text, due: null };
+    const raw = m[1].toLowerCase();
+    const now = new Date();
+    const dows = ['sun','mon','tue','wed','thu','fri','sat'];
+    let datePart = raw, timePart = null;
+    const plus = raw.indexOf('+');
+    if (plus !== -1) {
+      datePart = raw.slice(0, plus);
+      timePart = raw.slice(plus+1);
+    }
+
+    let d;
+    if (datePart === 'today')        d = new Date(now);
+    else if (datePart === 'tomorrow') d = new Date(now.getTime() + 86400000);
+    else if (datePart === 'yesterday') d = new Date(now.getTime() - 86400000);
+    else if (dows.includes(datePart)) {
+      const target = dows.indexOf(datePart);
+      d = new Date(now);
+      const diff = (target - d.getDay() + 7) % 7 || 7;  // next occurrence
+      d.setDate(d.getDate() + diff);
+    }
+    else if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+      d = new Date(datePart + 'T00:00');
+    }
+    else {
+      return { text, due: null };  // couldn't parse, leave as-is
+    }
+
+    // default time = 23:59 (end of day) unless specified
+    let hh = 23, mm = 59;
+    if (timePart) {
+      const ampm = timePart.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)$/);
+      const iso  = timePart.match(/^(\d{1,2}):(\d{2})$/);
+      if (ampm) {
+        hh = parseInt(ampm[1], 10) % 12;
+        if (ampm[3] === 'pm') hh += 12;
+        mm = ampm[2] ? parseInt(ampm[2], 10) : 0;
+      } else if (iso) {
+        hh = parseInt(iso[1], 10);
+        mm = parseInt(iso[2], 10);
+      }
+    }
+    d.setHours(hh, mm, 0, 0);
+
+    const cleaned = text.replace(/\bdue:\S+/i, '').trim();
+    return { text: cleaned, due: d.toISOString() };
+  }
+
+  function formatDue(iso){
+    if (!iso) return '';
+    const d = new Date(iso);
+    const now = new Date();
+    const startOfDay = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const dayDiff = Math.round((startOfDay(d) - startOfDay(now)) / 86400000);
+    const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const dows   = ['sun','mon','tue','wed','thu','fri','sat'];
+    const hasTime = !(d.getHours() === 23 && d.getMinutes() === 59);
+
+    let label;
+    if (dayDiff === 0)        label = 'today';
+    else if (dayDiff === 1)   label = 'tomorrow';
+    else if (dayDiff === -1)  label = 'yesterday';
+    else if (dayDiff > 0 && dayDiff < 7) label = dows[d.getDay()];
+    else                       label = `${months[d.getMonth()]} ${d.getDate()}`;
+
+    if (hasTime) {
+      let h = d.getHours(), m = d.getMinutes();
+      const ampm = h >= 12 ? 'pm' : 'am';
+      h = h % 12 || 12;
+      const ms = m === 0 ? '' : ':' + String(m).padStart(2,'0');
+      label += ` ${h}${ms}${ampm}`;
+    }
+    return label;
+  }
+
+  function dueClass(iso, done){
+    if (!iso || done) return '';
+    const d = new Date(iso).getTime();
+    const now = Date.now();
+    const dayMs = 86400000;
+    if (d < now)             return 'overdue';
+    if (d - now < dayMs)     return 'due-today';
+    if (d - now < 2*dayMs)   return 'due-soon';
+    return '';
+  }
+
   function makeTaskItem(key, t, originalIndex){
     const li=document.createElement('li');
-    li.className='task-item'+(t.done?' done':'');
-    li.innerHTML=`<span class="task-marker"></span><span class="task-text">${t.text}</span><span class="task-del">✕</span>`;
-    li.querySelector('.task-text').onclick=()=>{tasks[key][originalIndex].done=!tasks[key][originalIndex].done;saveTasks();renderTasks(key);};
-    li.querySelector('.task-marker').onclick=()=>{tasks[key][originalIndex].done=!tasks[key][originalIndex].done;saveTasks();renderTasks(key);};
+    const dueClassName = dueClass(t.due, t.done);
+    li.className='task-item'+(t.done?' done':'')+(dueClassName?' '+dueClassName:'');
+    const dueHtml = t.due ? `<span class="task-due">${formatDue(t.due)}</span>` : '';
+    li.innerHTML=`<span class="task-marker"></span><span class="task-text">${t.text}</span>${dueHtml}<span class="task-del">✕</span>`;
+    const toggle = ()=>{tasks[key][originalIndex].done=!tasks[key][originalIndex].done;saveTasks();renderTasks(key);};
+    li.querySelector('.task-text').onclick=toggle;
+    li.querySelector('.task-marker').onclick=toggle;
     li.querySelector('.task-del').onclick=(e)=>{e.stopPropagation();tasks[key].splice(originalIndex,1);saveTasks();renderTasks(key);renderCalendar();};
     return li;
   }
@@ -693,7 +807,14 @@
     renderTasks(activeDayKey);
   }
 
-  function addTask(key,text){if(!tasks[key])tasks[key]=[];tasks[key].push({text,done:false});saveTasks();renderTasks(key);renderCalendar();}
+  function addTask(key, rawText){
+    const { text, due } = parseDue(rawText);
+    if (!tasks[key]) tasks[key] = [];
+    tasks[key].push({ text, done: false, due });
+    saveTasks();
+    renderTasks(key);
+    renderCalendar();
+  }
 
   function bindTaskInput(key){
     const inp=document.getElementById('task-input');
@@ -1132,17 +1253,18 @@
     // Don't override if blown out by user — they explicitly killed it
     if (candle.classList.contains('out')) return;
 
-    // ── Vitality: based on today's tasks + yesterday's overdue ──
+    // ── Vitality: based on today's tasks + any overdue ──
     const todayTasks = tasks[todayKey()] || [];
     const activeToday = todayTasks.filter(t => !t.done).length;
-    // Look at last 3 days for overdue
+
+    // Overdue: any task (any day) with a due date in the past, not done
+    const now = Date.now();
     let overdue = 0;
-    for (let d = 1; d <= 3; d++) {
-      const dt = new Date();
-      dt.setDate(dt.getDate() - d);
-      const k = dateKey(dt);
-      overdue += (tasks[k] || []).filter(t => !t.done).length;
-    }
+    Object.values(tasks).forEach(dayList => {
+      (dayList || []).forEach(t => {
+        if (!t.done && t.due && new Date(t.due).getTime() < now) overdue++;
+      });
+    });
 
     // Remove any prior vitality class
     candle.classList.remove('v-bright','v-normal','v-low','v-struggling');
