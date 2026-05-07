@@ -51,7 +51,7 @@
 
   /* ── CANDLE ── */
   .candle{text-align:center;cursor:default;user-select:none;}
-  .flame{color:var(--amber);font-size:var(--candle-fs);line-height:1.35;display:block;animation:flicker 3s ease-in-out infinite;transition:opacity .4s ease, transform .15s ease, color .4s ease;transform-origin:center bottom;}
+  .flame{color:var(--amber);font-size:var(--candle-fs);line-height:1.35;display:block;animation:spin 4s ease-in-out infinite;transition:opacity .4s ease, color .4s ease;transform-origin:center bottom;}
   /* whoosh — flame is being disturbed */
   .candle.whoosh .flame{animation:whoosh .25s ease-in-out;color:#F5EFE0;}
   /* out — candle has been blown out, smoke instead of flame */
@@ -90,6 +90,18 @@
   .candle.out .wax-body{color:var(--wick);}
   .candle.out .wax-base{color:var(--dim);}
   @keyframes flicker{0%,100%{opacity:1;transform:scaleX(1);}25%{opacity:.85;transform:scaleX(.97) translateX(1px);}50%{opacity:.95;transform:scaleX(1.02) translateX(-1px);}75%{opacity:.9;transform:scaleX(.98) translateX(1px);}}
+  /* spin — paper mario style 2D rotation, with flicker baked in */
+  @keyframes spin{
+    0%   { transform: scaleX(1)    skewX(0deg);  opacity:1; }
+    12%  { transform: scaleX(.85)  skewX(-3deg); opacity:.92; }
+    25%  { transform: scaleX(.4)   skewX(-6deg); opacity:.85; }
+    38%  { transform: scaleX(.05)  skewX(0deg);  opacity:.7; }
+    50%  { transform: scaleX(-.4)  skewX(6deg);  opacity:.85; }
+    62%  { transform: scaleX(-.85) skewX(3deg);  opacity:.92; }
+    75%  { transform: scaleX(-1)   skewX(0deg);  opacity:1; }
+    87%  { transform: scaleX(-.85) skewX(-3deg); opacity:.95; }
+    100% { transform: scaleX(1)    skewX(0deg);  opacity:1; }
+  }
   @keyframes whoosh{
     0%   { transform:scaleX(1)    skewX(0deg)  translateX(0); }
     25%  { transform:scaleX(0.7)  skewX(-12deg) translateX(-4px); opacity:.8; }
