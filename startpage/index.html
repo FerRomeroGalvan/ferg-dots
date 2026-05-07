@@ -10,7 +10,7 @@
     --bg:#0D0D0D;--bg-alt:#1E1A14;--bg-2:#2E2A22;
     --fg:#F2F2F2;--ivory:#F5EFE0;--bone:#E8E0D0;
     --amber:#D99962;--wax:#C8955A;--wick:#7A6A55;
-    --shadow:#555555;--dim:#383838;--ember:#6B2A1A;
+    --mute:#555555;--dim:#383838;--ember:#6B2A1A;
     --page-w: 540px;
     --base-fs: 15px;
     --candle-fs: 16px;
@@ -54,23 +54,33 @@
   .view > .panel{margin-bottom:1.5rem;}
 
   /* ── MODE BAR ── */
-  .mode-bar{width:100%;max-width:var(--page-w);display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;padding-bottom:.5rem;border-bottom:1px solid var(--dim);}
+  .mode-bar{width:100%;max-width:var(--page-w);display:flex;align-items:center;justify-content:flex-end;margin-bottom:1.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--dim);}
   .mode-label{color:var(--dim);font-size:.7rem;letter-spacing:.15em;}
   .mode-tabs{display:flex;gap:.5rem;align-items:center;}
-  .mode-btn{background:none;border:none;color:var(--shadow);font-family:'JetBrains Mono',monospace;font-size:.7rem;cursor:pointer;padding:0;letter-spacing:.05em;transition:color .15s;}
+  .mode-btn{background:none;border:none;color:var(--mute);font-family:'JetBrains Mono',monospace;font-size:.7rem;cursor:pointer;padding:0;letter-spacing:.05em;transition:color .15s;}
   .mode-btn:hover{color:var(--amber);}
   .mode-btn.active{color:var(--amber);}
   .mode-sep{color:var(--dim);font-size:.7rem;}
 
-  /* ── HERO: CANDLE ── tier 1, the masthead */
+  /* ── HERO: CANDLE ── tier 1, the masthead
+     Living states:
+     - Time of day → --glow-r/g/b (set by JS)
+     - Vitality    → .v-bright | .v-normal | .v-low | .v-struggling
+  */
   .candle{
     text-align:center;
     cursor:default;
     user-select:none;
     position:relative;
     padding:1rem 0 1.5rem;
+    /* defaults: warm amber, will be overridden inline by JS */
+    --glow-r: 217;
+    --glow-g: 153;
+    --glow-b: 98;
+    --glow-strength: .08;
+    --flame-opacity: 1;
   }
-  /* warm radial glow behind the flame */
+  /* warm radial glow behind the flame, color set by time-of-day */
   .candle::before{
     content:'';
     position:absolute;
@@ -79,18 +89,42 @@
     transform:translateX(-50%);
     width:300px;
     height:300px;
-    background:radial-gradient(circle, rgba(217,153,98,.08) 0%, rgba(217,153,98,0) 60%);
+    background:radial-gradient(
+      circle,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), var(--glow-strength)) 0%,
+      rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0) 60%
+    );
     pointer-events:none;
-    transition:opacity .8s ease;
+    transition:opacity .8s ease, background 1.5s ease;
   }
   .candle.out::before{opacity:0;}
-  .flame{color:var(--amber);font-size:var(--candle-fs);line-height:1.35;display:block;animation:flicker 3s ease-in-out infinite;transition:opacity .4s ease, transform .15s ease, color .4s ease;transform-origin:center bottom;}
+
+  /* Vitality classes — override defaults */
+  .candle.v-bright   { --glow-strength: .14; --flame-opacity: 1; }
+  .candle.v-normal   { --glow-strength: .08; --flame-opacity: 1; }
+  .candle.v-low      { --glow-strength: .05; --flame-opacity: .8; }
+  .candle.v-struggling { --glow-strength: .03; --flame-opacity: .6; }
+
+  .flame{
+    color:var(--amber);
+    font-size:var(--candle-fs);
+    line-height:1.35;
+    display:block;
+    animation:flicker 3s ease-in-out infinite;
+    transition:opacity .8s ease, transform .15s ease, color .4s ease;
+    transform-origin:center bottom;
+    opacity:var(--flame-opacity);
+  }
+  /* struggling flame — flickers more nervously */
+  .candle.v-struggling .flame{animation:flicker 1.2s ease-in-out infinite;color:var(--wax);}
+  .candle.v-low .flame{color:var(--wax);}
+
   /* whoosh — flame is being disturbed */
   .candle.whoosh .flame{animation:whoosh .25s ease-in-out;color:#F5EFE0;}
   /* out — candle has been blown out, smoke instead of flame */
   .candle.out .flame{
     animation:none;
-    color:var(--shadow);
+    color:var(--mute);
     opacity:.4;
     transform:scaleY(.3) translateY(8px);
   }
@@ -98,7 +132,7 @@
   .wax-base{color:var(--wick);font-size:var(--candle-fs);line-height:1.35;display:block;transition:color .4s ease;}
   /* smoke — only visible when candle is out */
   .smoke{
-    color:var(--shadow);
+    color:var(--mute);
     font-size:var(--candle-fs);
     line-height:1;
     display:block;
@@ -122,7 +156,7 @@
   }
   .candle.out .wax-body{color:var(--wick);}
   .candle.out .wax-base{color:var(--dim);}
-  @keyframes flicker{0%,100%{opacity:1;transform:scaleX(1);}25%{opacity:.85;transform:scaleX(.97) translateX(1px);}50%{opacity:.95;transform:scaleX(1.02) translateX(-1px);}75%{opacity:.9;transform:scaleX(.98) translateX(1px);}}
+  @keyframes flicker{0%,100%{opacity:var(--flame-opacity);transform:scaleX(1);}25%{opacity:calc(var(--flame-opacity) * .85);transform:scaleX(.97) translateX(1px);}50%{opacity:calc(var(--flame-opacity) * .95);transform:scaleX(1.02) translateX(-1px);}75%{opacity:calc(var(--flame-opacity) * .9);transform:scaleX(.98) translateX(1px);}}
   @keyframes whoosh{
     0%   { transform:scaleX(1)    skewX(0deg)  translateX(0); }
     25%  { transform:scaleX(0.7)  skewX(-12deg) translateX(-4px); opacity:.8; }
@@ -142,7 +176,13 @@
     transition:opacity .2s;
   }
   .search-wrap:focus-within .search-hint{opacity:1;}
-  .search-hint code{color:var(--wax);background:transparent;font-family:'JetBrains Mono',monospace;}
+  .search-hint code{color:var(--wax);background:transparent;}
+  .hint-full{display:inline;}
+  .hint-short{display:none;}
+  @media (max-width: 600px) {
+    .hint-full{display:none;}
+    .hint-short{display:inline;}
+  }
   .search-engine{
     color:var(--wax);
     font-size:.85rem;
@@ -194,7 +234,7 @@
   }
   .today-date span{color:var(--amber);font-weight:500;}
   .tab-row{display:flex;gap:.5rem;align-items:baseline;}
-  .tab-btn{background:none;border:none;color:var(--shadow);font-family:'JetBrains Mono',monospace;font-size:.75rem;cursor:pointer;padding:0;letter-spacing:.05em;transition:color .15s;}
+  .tab-btn{background:none;border:none;color:var(--mute);font-family:'JetBrains Mono',monospace;font-size:.75rem;cursor:pointer;padding:0;letter-spacing:.05em;transition:color .15s;}
   .tab-btn:hover,.tab-btn.active{color:var(--amber);}
   .tab-sep{color:var(--dim);font-size:.75rem;}
   .today-view{display:block;}
@@ -229,7 +269,7 @@
     animation:slidein .2s ease;
   }
   .task-item:hover{color:var(--ivory);}
-  .task-item.done{color:var(--shadow);text-decoration:line-through;}
+  .task-item.done{color:var(--mute);text-decoration:line-through;}
   .task-marker{color:var(--wick);font-size:.85rem;flex-shrink:0;}
   .task-item.done .task-marker{color:var(--dim);}
   .task-item.done .task-marker::before{content:'▌';}
@@ -257,12 +297,12 @@
   .calendar{display:none;}
   .calendar.active{display:block;}
   .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;}
-  .cal-nav-btn{background:none;border:none;color:var(--shadow);font-family:'JetBrains Mono',monospace;font-size:.85rem;cursor:pointer;padding:0 .25rem;transition:color .15s;}
+  .cal-nav-btn{background:none;border:none;color:var(--mute);font-family:'JetBrains Mono',monospace;font-size:.85rem;cursor:pointer;padding:0 .25rem;transition:color .15s;}
   .cal-nav-btn:hover{color:var(--amber);}
   .cal-month-label{color:var(--ivory);font-size:.85rem;letter-spacing:.05em;}
   .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
   .cal-dow{text-align:center;color:var(--dim);font-size:.65rem;letter-spacing:.1em;padding:.2rem 0;text-transform:uppercase;}
-  .cal-day{text-align:center;font-size:.75rem;padding:.3rem .1rem;color:var(--shadow);cursor:pointer;border-radius:2px;transition:background .1s,color .1s;position:relative;}
+  .cal-day{text-align:center;font-size:.75rem;padding:.3rem .1rem;color:var(--mute);cursor:pointer;border-radius:2px;transition:background .1s,color .1s;position:relative;}
   .cal-day:hover{background:var(--bg-alt);color:var(--bone);}
   .cal-day.today{color:var(--amber);background:var(--bg-alt);outline:1px solid var(--dim);}
   .cal-day.other-month{color:var(--dim);opacity:.4;}
@@ -273,7 +313,7 @@
   .weather-wrap{width:100%;}
   .weather-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--dim);padding-bottom:.35rem;margin-bottom:.7rem;cursor:pointer;}
   .weather-label{color:var(--dim);font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;}
-  .weather-toggle{color:var(--shadow);font-size:.68rem;transition:color .15s;}
+  .weather-toggle{color:var(--mute);font-size:.68rem;transition:color .15s;}
   .weather-header:hover .weather-toggle{color:var(--amber);}
   /* Compact one-line primary view */
   .weather-primary{
@@ -286,7 +326,7 @@
   .weather-temp{color:var(--bone);font-size:.95rem;font-weight:400;}
   .weather-desc{color:var(--wick);font-size:.75rem;flex:1;}
   .weather-extra{display:flex;gap:1.2rem;}
-  .weather-stat{color:var(--shadow);font-size:.7rem;}
+  .weather-stat{color:var(--mute);font-size:.7rem;}
   .weather-stat span{color:var(--wick);}
   /* 7-day forecast — sparkline-based */
   .weather-forecast{
@@ -326,7 +366,7 @@
     font-size:.68rem;
   }
   .forecast-hi{color:var(--bone);}
-  .forecast-lo{color:var(--shadow);}
+  .forecast-lo{color:var(--mute);}
   .forecast-day.today .forecast-dow{color:var(--amber);}
   .forecast-day.today .forecast-hi{color:var(--ivory);}
   .weather-others{display:none;margin-top:.7rem;border-top:1px solid var(--dim);padding-top:.5rem;flex-direction:column;gap:.3rem;}
@@ -343,9 +383,9 @@
   .weather-other-row:hover .weather-other-set{opacity:1;color:var(--amber);}
   .weather-other-city{color:var(--wick);font-size:.78rem;min-width:110px;transition:color .15s;}
   .weather-other-temp{color:var(--bone);font-size:.78rem;min-width:3em;}
-  .weather-other-hilo{color:var(--shadow);font-size:.7rem;min-width:5em;}
+  .weather-other-hilo{color:var(--mute);font-size:.7rem;min-width:5em;}
   .weather-other-hilo .hi{color:var(--wick);}
-  .weather-other-desc{color:var(--shadow);font-size:.7rem;flex:1;}
+  .weather-other-desc{color:var(--mute);font-size:.7rem;flex:1;}
   .weather-other-set{
     color:var(--dim);
     font-size:.62rem;
@@ -354,7 +394,7 @@
     transition:opacity .15s, color .15s;
     margin-left:auto;
   }
-  .weather-other-desc{color:var(--shadow);font-size:.7rem;}
+  .weather-other-desc{color:var(--mute);font-size:.7rem;}
   .weather-loading,.weather-error{color:var(--dim);font-size:.75rem;}
   .weather-error{color:var(--ember);}
 
@@ -379,7 +419,7 @@
   }
   .link:hover{color:var(--bone);}
   .link:hover .link-icon{color:var(--amber);}
-  .link-icon{color:var(--shadow);font-size:.7rem;transition:color .15s;}
+  .link-icon{color:var(--mute);font-size:.7rem;transition:color .15s;}
   .link-key{
     color:var(--dim);
     font-size:.65rem;
@@ -393,14 +433,14 @@
   .gh-section{width:100%;}
   .gh-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--dim);padding-bottom:.35rem;margin-bottom:.75rem;}
   .gh-label{color:var(--dim);font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;}
-  .gh-meta{color:var(--shadow);font-size:.7rem;}
+  .gh-meta{color:var(--mute);font-size:.7rem;}
   .gh-loading{color:var(--dim);font-size:.8rem;}
   .gh-error{color:var(--ember);font-size:.75rem;}
 
   .gh-streak-row{display:flex;align-items:baseline;gap:1rem;margin-bottom:.25rem;}
   .gh-streak-num{color:var(--amber);font-size:1.8rem;font-weight:200;}
   .gh-streak-label{color:var(--wick);font-size:.8rem;}
-  .gh-streak-sub{color:var(--shadow);font-size:.75rem;}
+  .gh-streak-sub{color:var(--mute);font-size:.75rem;}
 
   .gh-commit-list{list-style:none;display:flex;flex-direction:column;gap:.35rem;}
   .gh-commit{display:flex;align-items:baseline;gap:.6rem;font-size:.8rem;}
@@ -411,7 +451,7 @@
   .gh-repo-list{list-style:none;display:flex;flex-direction:column;gap:.35rem;}
   .gh-repo{display:flex;align-items:baseline;gap:.6rem;font-size:.8rem;}
   .gh-repo-name{color:var(--bone);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .gh-repo-stars{color:var(--shadow);font-size:.72rem;flex-shrink:0;}
+  .gh-repo-stars{color:var(--mute);font-size:.72rem;flex-shrink:0;}
   .gh-repo-pushed{color:var(--dim);font-size:.72rem;flex-shrink:0;}
 
   .gh-pr-list{list-style:none;display:flex;flex-direction:column;gap:.35rem;}
@@ -427,9 +467,8 @@
 </head>
 <body>
 
-<!-- MODE BAR -->
+<!-- MODE BAR — minimal, just home/workspace tabs -->
 <div class="mode-bar">
-  <span class="mode-label">inkycap@Substrate</span>
   <div class="mode-tabs">
     <button class="mode-btn active" id="mode-home" onclick="setMode('home')">home</button>
     <span class="mode-sep">·</span>
@@ -465,7 +504,10 @@
       <span class="search-engine" id="search-engine">ddg</span>
       <input class="search-input" id="search" type="text" placeholder="search the web..." autofocus>
     </div>
-    <div class="search-hint"><code>g:</code> google · <code>gh:</code> github · <code>yt:</code> youtube · <code>w:</code> wiki</div>
+    <div class="search-hint">
+      <span class="hint-full"><code>g:</code> google · <code>gh:</code> github · <code>yt:</code> youtube · <code>w:</code> wiki</span>
+      <span class="hint-short"><code>g</code> · <code>gh</code> · <code>yt</code> · <code>w</code></span>
+    </div>
   </div>
 
   <div class="panel">
@@ -567,7 +609,7 @@
 
 </div>
 
-<div class="footer">inkycap · ferg-dots</div>
+<div class="footer">inkycap@substrate · ferg-dots</div>
 
 <script>
   // ── CONFIG ──
@@ -1080,11 +1122,81 @@
     });
   })();
 
+  // ── LIVING CANDLE ──
+  // Two axes:
+  //   - Vitality (flame/glow strength) reflects task health
+  //   - Time of day (glow color) reflects current hour
+  function updateCandleState(){
+    const candle = document.querySelector('.candle');
+    if (!candle) return;
+    // Don't override if blown out by user — they explicitly killed it
+    if (candle.classList.contains('out')) return;
+
+    // ── Vitality: based on today's tasks + yesterday's overdue ──
+    const todayTasks = tasks[todayKey()] || [];
+    const activeToday = todayTasks.filter(t => !t.done).length;
+    // Look at last 3 days for overdue
+    let overdue = 0;
+    for (let d = 1; d <= 3; d++) {
+      const dt = new Date();
+      dt.setDate(dt.getDate() - d);
+      const k = dateKey(dt);
+      overdue += (tasks[k] || []).filter(t => !t.done).length;
+    }
+
+    // Remove any prior vitality class
+    candle.classList.remove('v-bright','v-normal','v-low','v-struggling');
+
+    let vitality;
+    if (overdue >= 3) {
+      vitality = 'v-struggling';   // significant backlog
+    } else if (overdue >= 1 || activeToday >= 5) {
+      vitality = 'v-low';          // some pressure
+    } else if (activeToday === 0 && todayTasks.length > 0) {
+      vitality = 'v-bright';       // all done today!
+    } else {
+      vitality = 'v-normal';
+    }
+    candle.classList.add(vitality);
+
+    // ── Time of day: tint the glow ──
+    // (R, G, B) values for the radial glow at each phase
+    const hr = new Date().getHours();
+    let r, g, b;
+    if (hr >= 5 && hr < 9) {
+      // dawn — peach, slightly cool
+      r = 230; g = 170; b = 140;
+    } else if (hr >= 9 && hr < 17) {
+      // midday — warm amber baseline
+      r = 217; g = 153; b = 98;
+    } else if (hr >= 17 && hr < 21) {
+      // dusk — deeper orange
+      r = 200; g = 110; b = 70;
+    } else {
+      // night — dim with a touch of indigo
+      r = 140; g = 110; b = 130;
+    }
+    candle.style.setProperty('--glow-r', r);
+    candle.style.setProperty('--glow-g', g);
+    candle.style.setProperty('--glow-b', b);
+  }
+
+  // Recompute every minute (catches midnight rollover and hourly tints)
+  setInterval(updateCandleState, 60_000);
+
+  // Hook into task changes so vitality updates immediately
+  const _origRenderTasks = renderTasks;
+  renderTasks = function(key){
+    _origRenderTasks(key);
+    updateCandleState();
+  };
+
   // ── INIT ──
   renderTodayLabel();
   renderTasks(activeDayKey);
   bindTaskInput(activeDayKey);
   fetchWeather();
+  updateCandleState();
 </script>
 </body>
 </html>
