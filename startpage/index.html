@@ -453,19 +453,12 @@
       // Recent commits via events
       const events=await ghFetch(`/users/${GH_USER}/events?per_page=30`);
       console.log('events', events);
-      const pushEvents=events.filter(e=>e.type==='PushEvent').slice(0,6);
-      const commits=pushEvents.flatMap(e=>{
-        try{
-          return e.payload.commits.slice(-1).map(c=>({
-            repo:e.repo.name.split('/')[1],
-            msg:c.message.split('\n')[0],
-            time:e.created_at
-          }));
-        }catch(err){
-          console.error('error processing commit', e, err);
-          return[];
-        }
-      }).slice(0,6);
+      const pushEvents=events.filter(e=>e.type==='PushEvent'&&e.payload&&Array.isArray(e.payload.commits)&&e.payload.commits.length>0).slice(0,6);
+      const commits=pushEvents.flatMap(e=>e.payload.commits.slice(-1).map(c=>({
+        repo:e.repo.name.split('/')[1],
+        msg:c.message.split('\n')[0],
+        time:e.created_at
+      }))).slice(0,6);
       document.getElementById('gh-commits').innerHTML=commits.length
         ? commits.map(c=>`<li class="gh-commit"><span class="gh-commit-repo">${c.repo}</span><span class="gh-commit-msg">${c.msg}</span><span class="gh-commit-age">${timeAgo(c.time)}</span></li>`).join('')
         : '<li class="gh-loading">no recent commits</li>';
