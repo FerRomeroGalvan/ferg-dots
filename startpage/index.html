@@ -496,8 +496,14 @@
 
       // PRs & Issues (primary account only)
       const primary=GH_ACCOUNTS[0];
-      const prs=await ghFetch(`/search/issues?q=author:${primary.user}+is:open+is:pr&per_page=4`,primary.token);
-      const issues=await ghFetch(`/search/issues?q=author:${primary.user}+is:open+is:issue&per_page=3`,primary.token);
+      const prResults=await Promise.all(
+        GH_ACCOUNTS.map(a=>ghFetch(`/search/issues?q=author:${a.user}+is:open+is:pr&per_page=4`,a.token))
+      );
+      const issueResults=await Promise.all(
+        GH_ACCOUNTS.map(a=>ghFetch(`/search/issues?q=author:${a.user}+is:open+is:issue&per_page=3`,a.token))
+      );
+      const prs={items:prResults.flatMap(r=>r.items)};
+      const issues={items:issueResults.flatMap(r=>r.items)};
       console.log('prs', prs);
       console.log('issues', issues);
       const combined=[...prs.items,...issues.items].slice(0,6);
