@@ -102,6 +102,10 @@
   .search-wrap{width:100%;}
   .search-label{color:var(--wick);font-size:.75rem;margin-bottom:.35rem;}
   .search-label span{color:var(--amber);}
+  .search-hint{color:var(--dim);font-size:.7rem;}
+  .search-hint code{color:var(--wax);background:transparent;font-family:'JetBrains Mono',monospace;}
+  .search-engine{color:var(--wax);font-size:.78rem;letter-spacing:.05em;min-width:2.2em;text-align:center;border-right:1px solid var(--dim);padding-right:.5rem;transition:color .15s;}
+  .search-engine.shifted{color:var(--amber);}
   .search-row{display:flex;align-items:center;gap:.5rem;border-bottom:1px solid var(--dim);padding-bottom:.35rem;}
   .caret{color:var(--amber);}
   .search-input{flex:1;background:transparent;border:none;outline:none;color:var(--bone);font-family:'JetBrains Mono',monospace;font-size:.9rem;caret-color:var(--amber);}
@@ -261,10 +265,11 @@
   </div>
 
   <div class="search-wrap">
-    <div class="search-label"><span>~/</span> search</div>
+    <div class="search-label"><span>~/</span> search <span class="search-hint">— try <code>g:</code> google · <code>gh:</code> github · <code>yt:</code> youtube · <code>w:</code> wiki</span></div>
     <div class="search-row">
       <span class="caret">❯</span>
-      <input class="search-input" id="search" type="text" placeholder="type to search the web..." autofocus>
+      <span class="search-engine" id="search-engine">ddg</span>
+      <input class="search-input" id="search" type="text" placeholder="type to search..." autofocus>
     </div>
   </div>
 
@@ -632,8 +637,33 @@
   }
 
   // ── SEARCH ──
-  document.getElementById('search').addEventListener('keydown',e=>{
-    if(e.key==='Enter'){const q=e.target.value.trim();if(q)window.location.href=`https://duckduckgo.com/?q=${encodeURIComponent(q)}`;}
+  const ENGINES = {
+    'g':   { label: 'g',   url: q => `https://www.google.com/search?q=${encodeURIComponent(q)}` },
+    'gh':  { label: 'gh',  url: q => `https://github.com/search?q=${encodeURIComponent(q)}&type=repositories` },
+    'yt':  { label: 'yt',  url: q => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}` },
+    'w':   { label: 'w',   url: q => `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(q)}` },
+  };
+  const DEFAULT_ENGINE = { label: 'ddg', url: q => `https://duckduckgo.com/?q=${encodeURIComponent(q)}` };
+
+  function parseSearch(input){
+    const m = input.match(/^([a-z]+):\s*(.*)$/);
+    if (m && ENGINES[m[1]]) return { engine: ENGINES[m[1]], query: m[2] };
+    return { engine: DEFAULT_ENGINE, query: input };
+  }
+
+  const searchEl = document.getElementById('search');
+  const engineEl = document.getElementById('search-engine');
+
+  searchEl.addEventListener('input', e => {
+    const { engine } = parseSearch(e.target.value);
+    engineEl.textContent = engine.label;
+    engineEl.classList.toggle('shifted', engine !== DEFAULT_ENGINE);
+  });
+
+  searchEl.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const { engine, query } = parseSearch(e.target.value.trim());
+    if (query) window.location.href = engine.url(query);
   });
 
   // ── KEYBOARD SHORTCUTS ──
