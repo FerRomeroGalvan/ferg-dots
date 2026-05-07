@@ -429,7 +429,7 @@
   }
 
   async function ghFetch(path){
-    console.log('fetching', path, 'with token', GH_TOKEN.slice(0,10));
+    console.log('fetching', path);
     const res=await fetch(`https://api.github.com${path}`,{headers:{Authorization:`token ${GH_TOKEN}`,Accept:'application/vnd.github+json'}});
     console.log('response', res.status);
     if(!res.ok)throw new Error(res.status);
