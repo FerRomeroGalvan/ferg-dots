@@ -312,6 +312,13 @@
   .forecast-day.today .forecast-spark .area{fill:rgba(217,153,98,.18);}
   .forecast-spark .marker{fill:var(--wax);}
   .forecast-day.today .forecast-spark .marker{fill:var(--amber);}
+  .forecast-icon{
+    color:var(--wax);
+    font-size:.85rem;
+    line-height:1;
+    margin-top:.1rem;
+  }
+  .forecast-day.today .forecast-icon{color:var(--amber);}
   .forecast-temps{
     display:flex;
     justify-content:center;
@@ -324,9 +331,29 @@
   .forecast-day.today .forecast-hi{color:var(--ivory);}
   .weather-others{display:none;margin-top:.7rem;border-top:1px solid var(--dim);padding-top:.5rem;flex-direction:column;gap:.3rem;}
   .weather-others.open{display:flex;}
-  .weather-other-row{display:flex;align-items:baseline;gap:.75rem;}
-  .weather-other-city{color:var(--wick);font-size:.72rem;width:120px;}
-  .weather-other-temp{color:var(--bone);font-size:.78rem;}
+  .weather-other-row{
+    display:flex;
+    align-items:baseline;
+    gap:.75rem;
+    cursor:pointer;
+    padding:.15rem 0;
+    transition:color .15s;
+  }
+  .weather-other-row:hover .weather-other-city{color:var(--bone);}
+  .weather-other-row:hover .weather-other-set{opacity:1;color:var(--amber);}
+  .weather-other-city{color:var(--wick);font-size:.78rem;min-width:110px;transition:color .15s;}
+  .weather-other-temp{color:var(--bone);font-size:.78rem;min-width:3em;}
+  .weather-other-hilo{color:var(--shadow);font-size:.7rem;min-width:5em;}
+  .weather-other-hilo .hi{color:var(--wick);}
+  .weather-other-desc{color:var(--shadow);font-size:.7rem;flex:1;}
+  .weather-other-set{
+    color:var(--dim);
+    font-size:.62rem;
+    letter-spacing:.1em;
+    opacity:0;
+    transition:opacity .15s, color .15s;
+    margin-left:auto;
+  }
   .weather-other-desc{color:var(--shadow);font-size:.7rem;}
   .weather-loading,.weather-error{color:var(--dim);font-size:.75rem;}
   .weather-error{color:var(--ember);}
@@ -688,6 +715,10 @@
   ];
   const WX={0:'clear',1:'mainly clear',2:'partly cloudy',3:'overcast',45:'fog',48:'icy fog',51:'light drizzle',53:'drizzle',55:'heavy drizzle',61:'light rain',63:'rain',65:'heavy rain',71:'light snow',73:'snow',75:'heavy snow',80:'showers',81:'showers',82:'heavy showers',95:'thunderstorm',99:'thunderstorm'};
   let weatherOpen=false,weatherData=[];
+  // Which city is primary — persisted in localStorage so it sticks across visits
+  const PRIMARY_KEY = 'candle-weather-primary';
+  let primaryCity = localStorage.getItem(PRIMARY_KEY) ||
+                    (CITIES.find(c => c.primary) || CITIES[0]).name;
 
   // Map weather codes to compact ASCII-ish glyphs for the forecast strip
   const WX_ICON = {
@@ -709,24 +740,57 @@
       weatherData=results.map((d,i)=>({
         city:CITIES[i].name,
         temp:Math.round(d.current.temperature_2m),
+        code:d.current.weathercode,
         desc:WX[d.current.weathercode]||'unknown',
         wind:Math.round(d.current.windspeed_10m),
         humidity:Math.round(d.current.relativehumidity_2m),
-        primary:CITIES[i].primary,
+        hi:Math.round(d.daily.temperature_2m_max[0]),
+        lo:Math.round(d.daily.temperature_2m_min[0]),
         daily:d.daily,
         hourly:d.hourly
       }));
-      const p=weatherData.find(w=>w.primary);
-      const o=weatherData.filter(w=>!w.primary);
-      document.getElementById('weather-main').innerHTML=`<div class="weather-primary"><span class="weather-city">${p.city}</span><span class="weather-temp">${p.temp}°F</span><span class="weather-desc">${p.desc}</span></div><div class="weather-extra"><span class="weather-stat">wind <span>${p.wind} mph</span></span><span class="weather-stat">humidity <span>${p.humidity}%</span></span></div>`;
-
-      // 7-day forecast with sparklines for primary city
-      if(p.daily && p.hourly){
-        renderForecast(p);
-      }
-
-      document.getElementById('weather-others').innerHTML=o.map(w=>`<div class="weather-other-row"><span class="weather-other-city">${w.city}</span><span class="weather-other-temp">${w.temp}°F</span><span class="weather-other-desc">${w.desc}</span></div>`).join('');
+      renderWeatherView();
     }catch(e){document.getElementById('weather-main').innerHTML='<span class="weather-error">weather unavailable</span>';}
+  }
+
+  function renderWeatherView(){
+    const p = weatherData.find(w => w.city === primaryCity) || weatherData[0];
+    const others = weatherData.filter(w => w.city !== p.city);
+    const icon = WX_ICON[p.code] || '·';
+    document.getElementById('weather-main').innerHTML=`
+      <div class="weather-primary">
+        <span class="weather-city">${p.city}</span>
+        <span class="weather-temp">${p.temp}°F</span>
+        <span class="weather-desc">${icon} ${p.desc}</span>
+      </div>
+      <div class="weather-extra">
+        <span class="weather-stat">hi <span>${p.hi}°</span></span>
+        <span class="weather-stat">lo <span>${p.lo}°</span></span>
+        <span class="weather-stat">wind <span>${p.wind} mph</span></span>
+        <span class="weather-stat">humidity <span>${p.humidity}%</span></span>
+      </div>`;
+
+    if (p.daily && p.hourly) renderForecast(p);
+
+    document.getElementById('weather-others').innerHTML = others.map(w => {
+      const ic = WX_ICON[w.code] || '·';
+      return `<div class="weather-other-row" data-city="${w.city}">
+        <span class="weather-other-city">${w.city}</span>
+        <span class="weather-other-temp">${w.temp}°F</span>
+        <span class="weather-other-hilo"><span class="hi">${w.hi}°</span> · ${w.lo}°</span>
+        <span class="weather-other-desc">${ic} ${w.desc}</span>
+        <span class="weather-other-set">[ set primary ]</span>
+      </div>`;
+    }).join('');
+
+    // Wire up click-to-set-primary on each row
+    document.querySelectorAll('.weather-other-row').forEach(row => {
+      row.onclick = () => {
+        primaryCity = row.dataset.city;
+        localStorage.setItem(PRIMARY_KEY, primaryCity);
+        renderWeatherView();
+      };
+    });
   }
 
   function renderForecast(p){
@@ -772,9 +836,11 @@
 
       const hi = Math.round(p.daily.temperature_2m_max[i]);
       const lo = Math.round(p.daily.temperature_2m_min[i]);
+      const icon = WX_ICON[p.daily.weathercode[i]] || '·';
 
       return `<div class="forecast-day${isToday?' today':''}">
         <span class="forecast-dow">${dow}</span>
+        <span class="forecast-icon">${icon}</span>
         <svg class="forecast-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
           <path class="area" d="${areaPath}"/>
           <path class="line" d="${linePath}"/>
