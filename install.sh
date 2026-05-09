@@ -4,7 +4,6 @@
 # Bootstrap a fresh Linux machine with the full setup.
 # Usage: bash install.sh
 # =============================================================================
-
 set -e
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -30,6 +29,7 @@ fi
 info "Updating package index..."
 eval "$PKG_UPDATE"
 
+# ── Core tools ───────────────────────────────────────────────────────────────
 for pkg in vim git stow curl fzf; do
     if ! command -v "$pkg" &>/dev/null; then
         info "Installing $pkg..."
@@ -39,6 +39,29 @@ for pkg in vim git stow curl fzf; do
     fi
 done
 
+# ── LaTeX toolchain (Overleaf-like local editing) ────────────────────────────
+info "Installing LaTeX toolchain..."
+
+if command -v apt-get &>/dev/null; then
+    # Debian/Ubuntu — texlive-full covers everything Overleaf has
+    LATEX_PKGS="texlive-full latexmk zathura zathura-pdf-poppler xdotool"
+elif command -v pacman &>/dev/null; then
+    # Arch
+    LATEX_PKGS="texlive-most texlive-lang latexmk zathura zathura-pdf-poppler xdotool"
+elif command -v dnf &>/dev/null; then
+    # Fedora
+    LATEX_PKGS="texlive-scheme-full latexmk zathura zathura-pdf-poppler xdotool"
+fi
+
+for pkg in $LATEX_PKGS; do
+    # Some LaTeX meta-packages can't be detected by command -v,
+    # so we let the package manager handle idempotence.
+    info "Ensuring $pkg..."
+    eval "$PKG_INSTALL $pkg" 2>/dev/null || warn "Could not install $pkg — install manually if needed"
+done
+success "LaTeX toolchain ready"
+
+# ── Starship prompt ──────────────────────────────────────────────────────────
 if ! command -v starship &>/dev/null; then
     info "Installing starship..."
     curl -sS https://starship.rs/install.sh | sh -s -- --yes
@@ -47,6 +70,7 @@ else
     success "Starship already installed"
 fi
 
+# ── Zoxide ───────────────────────────────────────────────────────────────────
 if ! command -v zoxide &>/dev/null; then
     info "Installing zoxide..."
     curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
@@ -55,6 +79,7 @@ else
     success "Zoxide already installed"
 fi
 
+# ── JetBrains Mono Nerd Font ────────────────────────────────────────────────
 FONT_DIR="$HOME/.local/share/fonts"
 if ! fc-list | grep -qi "JetBrainsMono Nerd"; then
     info "Installing JetBrains Mono Nerd Font..."
@@ -69,6 +94,7 @@ else
     success "JetBrains Mono Nerd Font already installed"
 fi
 
+# ── vim-plug ─────────────────────────────────────────────────────────────────
 VIM_PLUG="$HOME/.vim/autoload/plug.vim"
 if [[ ! -f "$VIM_PLUG" ]]; then
     info "Installing vim-plug..."
@@ -79,6 +105,7 @@ else
     success "vim-plug already present"
 fi
 
+# ── Stow packages ───────────────────────────────────────────────────────────
 info "Stowing packages..."
 cd "$DOTFILES_DIR"
 
@@ -94,17 +121,19 @@ stow_package() {
     success "$pkg stowed"
 }
 
-stow_package vim .vimrc
-stow_package bash .bashrc
+stow_package vim    .vimrc
+stow_package bash   .bashrc
 stow_package starship
 
 mkdir -p "$HOME/.vim/undodir"
 success "undodir ready"
 
+# ── Vim plugins ──────────────────────────────────────────────────────────────
 info "Installing vim plugins..."
 vim -es -u "$HOME/.vimrc" -i NONE -c "PlugInstall" -c "qa!" 2>/dev/null || true
 success "Plugins installed"
 
+# ── Terminal color profile ───────────────────────────────────────────────────
 DCONF_FILE="$DOTFILES_DIR/terminal/candle-light.dconf"
 if command -v dconf &>/dev/null && [[ -f "$DCONF_FILE" ]]; then
     info "Loading terminal color profile..."
@@ -117,3 +146,4 @@ fi
 printf "\n"
 success "All done. Restart your terminal to see the changes."
 info "Tip: the font change needs a terminal restart to take effect."
+info "Tip: open a .tex file in vim and :w to trigger auto-compile with Zathura."

@@ -1,72 +1,165 @@
 # =============================================================================
-# starship.toml — candle-light theme
-# Palette mirrors the vim candle-light color system:
-#   amber  #D99962  flame — the live fire, used sparingly
-#   bone   #E8E0D0  off-white — names and titles
-#   wax    #C8955A  muted terracotta — keywords, git branch
-#   wick   #7A6A55  dark cord — arrows, separators
-#   shadow #555555  cool mid-grey — punctuation, info
-#   dim    #383838  comment-level — timestamps, low priority
+# starship.toml — candle-light, native
+#
+# Design intent: the prompt IS a candle. Two lines.
+#
+#   Line 1 — the heat trail. Information that hangs in the air above the flame:
+#            path, git, runtime, ssh, time. Quiet, unboxed, colored text only.
+#
+#   Line 2 — the flame. A single warm mark where you type. Lit when commands
+#            succeed, guttered (dim, smoky) when they fail.
+#
+# No segments, no chevrons, no powerline. Color carries meaning through
+# brightness, not boxes.
+#
+# Palette
+#   amber   #D99962  flame
+#   wax     #C8955A  body
+#   wick    #7A6A55  cord
+#   bone    #E8E0D0  off-white text
+#   dim     #555555  receded info
+#   shadow  #383838  comment / overdue
+#   ember   #6B2A1A  guttering / error
 # =============================================================================
 
+"$schema" = 'https://starship.rs/config-schema.json'
+
+# Two-line format. Top is the heat trail; bottom is the flame.
 format = """
-$directory$git_branch$git_status$python$cmd_duration
+$directory\
+$git_branch$git_status\
+$python$nodejs$rust$golang\
+$hostname$container$custom\
+$battery\
+$cmd_duration\
+$line_break\
 $character"""
 
-# --- Directory ---------------------------------------------------------------
+right_format = """$time"""
+
+# Faint separator between top line and prompt — like the line where heat
+# meets the flame. Just whitespace, no character.
+add_newline = false
+
+# --- Directory: the body of the candle, in wax -----------------------------
 [directory]
-style = "bold #E8E0D0"          # bone — the path is a name
+style = "fg:#C8955A"
+format = "[$path]($style) "
 truncation_length = 3
-truncate_to_repo = true
-read_only = " 󰌾"
-read_only_style = "#C8955A"
+truncation_symbol = "…/"
+read_only = " [ro](fg:#7A6A55)"
 
-# --- Git branch --------------------------------------------------------------
+# --- Git branch: amber when active, the live ember of the workspace --------
 [git_branch]
-format = "[ $branch]($style) "
-style = "#C8955A"               # wax — prepared, structured
-symbol = " "
+symbol = ""
+style = "fg:#D99962"
+format = "[($branch)]($style) "
 
-# --- Git status --------------------------------------------------------------
+# --- Git status: ember when dirty, almost invisible when clean -------------
 [git_status]
-format = '([$all_status$ahead_behind]($style) )'
-style = "#D99962"               # amber — live change, the flame
-modified = "▎"
-staged = "▎"
-untracked = "▏"
-deleted = "▋"
-conflicted = "▊"
-ahead = "⇡${count}"
-behind = "⇣${count}"
-diverged = "⇕⇡${ahead_count}⇣${behind_count}"
+style = "fg:#6B2A1A"
+format = "[$all_status$ahead_behind]($style) "
+modified = "✱"
+staged = "✚"
+untracked = "?"
+deleted = "✖"
+ahead = "↑${count}"
+behind = "↓${count}"
+diverged = "↕${ahead_count}↓${behind_count}"
 
-# --- Python venv / version ---------------------------------------------------
+# --- Runtime versions: wick, the supporting context ------------------------
 [python]
-format = '[${symbol}${pyenv_prefix}(${version} )(\($virtualenv\) )]($style)'
-style = "#7A6A55"               # wick — supporting, dim
-symbol = " "
+symbol = "py"
+style = "fg:#7A6A55"
+format = "[$symbol ${pyenv_prefix}(\\($virtualenv\\))(${version})]($style) "
 detect_files = ["*.py", "pyproject.toml", "requirements.txt", ".python-version"]
 
-# --- Command duration --------------------------------------------------------
-[cmd_duration]
-min_time = 2_000
-format = "[$duration]($style) "
-style = "#383838"               # dim — low priority info
-
-# --- Prompt character --------------------------------------------------------
-[character]
-success_symbol = "[🕯️](#D99962)"     # shadow — recedes when all is well
-error_symbol = "[🔥](#CC3333)"       # ember red — something burned
-
-# --- Disabled modules (keep prompt lean) -------------------------------------
-[package]
-disabled = true
-
 [nodejs]
-disabled = true
+symbol = "node"
+style = "fg:#7A6A55"
+format = "[$symbol ($version)]($style) "
 
 [rust]
-disabled = true
+symbol = "rs"
+style = "fg:#7A6A55"
+format = "[$symbol ($version)]($style) "
 
 [golang]
-disabled = true
+symbol = "go"
+style = "fg:#7A6A55"
+format = "[$symbol ($version)]($style) "
+
+# --- Hostname: amber when SSH'd, grabs your eye ----------------------------
+[hostname]
+ssh_only = true
+ssh_symbol = "ssh "
+style = "fg:#D99962"
+format = "[$ssh_symbol$hostname]($style) "
+
+# --- Container: wax, you're somewhere contained ----------------------------
+[container]
+disabled = false
+style = "fg:#C8955A"
+format = "[in $name]($style) "
+
+# --- Battery: ember red when low, otherwise hidden -------------------------
+[battery]
+full_symbol = ""
+charging_symbol = "↑"
+discharging_symbol = "↓"
+empty_symbol = "!"
+format = "[bat $symbol $percentage]($style) "
+
+[[battery.display]]
+threshold = 10
+style = "fg:#CC3333"
+
+[[battery.display]]
+threshold = 20
+style = "fg:#C87932"
+
+# --- RAM (only when over 80%) ----------------------------------------------
+[custom.mem]
+description = "RAM usage when over 80%"
+when = """
+awk '/MemTotal/ {t=$2} /MemAvailable/ {a=$2} END {exit !((t-a)/t > 0.80)}' /proc/meminfo
+"""
+command = """
+awk '/MemTotal/ {t=$2} /MemAvailable/ {a=$2} END {printf "%.0f%%", (t-a)/t*100}' /proc/meminfo
+"""
+shell = ["bash", "--noprofile", "--norc"]
+style = "fg:#C87932"
+format = "[ram $output]($style) "
+
+# --- Spotify (only when playing) -------------------------------------------
+[custom.spotify]
+description = "Currently playing track"
+when = """
+playerctl --player=spotify status 2>/dev/null | grep -q "Playing"
+"""
+command = """
+playerctl --player=spotify metadata --format '{{ artist }} — {{ title }}' 2>/dev/null | cut -c -40
+"""
+shell = ["bash", "--noprofile", "--norc"]
+style = "fg:#7A6A55"
+format = "[♪ $output]($style) "
+
+# --- Command duration: wick, "this took a while" --------------------------
+[cmd_duration]
+min_time = 2_000
+style = "fg:#7A6A55"
+format = "[took $duration]($style) "
+
+# --- Time on the right edge — receded, just reference ---------------------
+[time]
+disabled = false
+time_format = "%H:%M"
+style = "fg:#555555"
+format = "[$time]($style)"
+
+# --- Prompt character — THE FLAME -----------------------------------------
+# Single amber mark when lit, ember-red and "smoky" when something failed.
+# This is the only always-on warm element. All your attention belongs here.
+[character]
+success_symbol = "[🕯️](#D99962)"
+error_symbol   = "[†](#6B2A1A)"
