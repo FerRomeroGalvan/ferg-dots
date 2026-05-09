@@ -55,8 +55,8 @@ style = "#383838"               # dim — low priority info
 
 # --- Prompt character --------------------------------------------------------
 [character]
-success_symbol = "[❯](#555555)"     # shadow — recedes when all is well
-error_symbol = "[❯](#CC3333)"       # ember red — something burned
+success_symbol = "[🕯️](#D99962)"     # shadow — recedes when all is well
+error_symbol = "[🔥](#CC3333)"       # ember red — something burned
 
 # --- Disabled modules (keep prompt lean) -------------------------------------
 [package]
