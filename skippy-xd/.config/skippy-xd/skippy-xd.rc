@@ -1,0 +1,77 @@
+# =============================================================================
+# skippy-xd.rc — candle-light theme
+#
+# Press Super+E to expose all open windows in the current workspace as
+# thumbnails. Click to focus.
+#
+# Palette
+#   bg      #0D0D0D  near-black backdrop
+#   bg-alt  #1E1A14  warm dark frame
+#   amber   #D99962  active highlight
+#   wax     #C8955A  body
+#   wick    #7A6A55  inactive label
+#   bone    #E8E0D0  off-white text
+#   dim     #383838  borders
+# =============================================================================
+
+[general]
+distance = 50
+useNetWMFullscreen = true
+ignoreSkipTaskbar = true
+updateFreq = 60.0
+lazyTrans = false
+pipePath = /tmp/skippy-xd-fifo
+movePointerOnStart = true
+movePointerOnSelect = true
+movePointerOnRaise = true
+switchDesktopOnActivate = true
+useNameWindowPixmap = false
+includeFrame = true
+allowUpscale = true
+showAllDesktops = false
+showUnmappedWindows = true
+includeAllScreens = false
+
+background = #0D0D0D
+backgroundOpacity = 0.85
+
+[xinerama]
+showAll = false
+
+[normal]
+tint = #1E1A14
+tintOpacity = 60
+opacity = 200
+border = #383838
+
+[highlight]
+tint = #D99962
+tintOpacity = 100
+opacity = 255
+border = #D99962
+
+[shadow]
+color = #0D0D0D
+opacity = 128
+offsetX = 4
+offsetY = 4
+
+[tooltip]
+show = true
+followsMouse = false
+offsetX = 0
+offsetY = 4
+align = center
+border = #D99962
+background = #1E1A14
+opacity = 240
+text = #E8E0D0
+textShadow = none
+font = JetBrainsMono Nerd Font Mono-10:weight=regular
+
+[bindings]
+miwMouse1 = focus
+miwMouse2 = close-ewmh
+miwMouse3 = iconify
+miwKeyEnter = focus
+miwKeyEscape = cancel
