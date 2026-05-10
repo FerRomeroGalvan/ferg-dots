@@ -46,6 +46,16 @@ let g:minimap_enable_highlight_colorgroup = 0
 " ================================================================
 " PLUGINS
 " ================================================================
+
+" Custom devicon overrides — set BEFORE plug#begin so devicons picks them up.
+" Default tex glyph misses in older Nerd Fonts and renders as ';'. Use Σ
+" which works in any monospace font and reads bigger.
+let g:WebDevIconsUnicodeDecorateFileNodesExtensionSymbols = {
+      \ 'tex'  : 'Σ',
+      \ 'cls'  : 'Σ',
+      \ 'bib'  : '❝',
+      \ }
+
 call plug#begin()
 
 Plug 'preservim/nerdtree'
@@ -58,6 +68,11 @@ Plug 'ryanoasis/vim-devicons'
 Plug 'wfxr/minimap.vim'
 Plug 'airblade/vim-gitgutter'
 Plug 'vim-test/vim-test'
+
+" ── LaTeX / Overleaf-like editing ──
+Plug 'lervag/vimtex'                " Core LaTeX engine
+Plug 'SirVer/ultisnips'             " Snippet engine (fast LaTeX entry)
+Plug 'honza/vim-snippets'           " Community snippet library
 
 call plug#end()
 
@@ -233,3 +248,84 @@ function! OpenDirLayout()
 endfunction
 
 autocmd VimEnter * call OpenDirLayout()
+
+" ════════════════════════════════════════════════════════════════
+" LaTeX  (Overleaf-like workflow)
+" ════════════════════════════════════════════════════════════════
+
+" PDF viewer — pick one for your platform:
+"   Linux:  zathura  (best vim integration, auto-reloads)
+"   macOS:  skim
+let g:vimtex_view_method = 'zathura'
+
+" Continuous compilation — mirrors Overleaf's auto-compile
+let g:vimtex_compiler_latexmk = {
+      \ 'options' : [
+      \   '-pdf',
+      \   '-shell-escape',
+      \   '-verbose',
+      \   '-file-line-error',
+      \   '-synctex=1',
+      \   '-interaction=nonstopmode',
+      \ ],
+      \}
+
+" Manual compile only — use \ll to start/stop continuous compilation,
+" or \lc for a one-shot compile. Auto-compile-on-save was annoying with
+" save-frequent habits.
+"
+" augroup vimtex_auto
+"   autocmd!
+"   autocmd BufWritePost *.tex silent! VimtexCompile
+" augroup END
+
+" Snippet triggers
+let g:UltiSnipsExpandTrigger       = '<tab>'
+let g:UltiSnipsJumpForwardTrigger  = '<tab>'
+let g:UltiSnipsJumpBackwardTrigger = '<s-tab>'
+
+" Conceal math symbols (shows rendered unicode in-editor)
+set conceallevel=2
+let g:tex_conceal = 'abdmg'
+let g:vimtex_syntax_conceal = {
+      \ 'accents': 1,
+      \ 'math_bounds': 1,
+      \ 'math_delimiters': 1,
+      \ 'math_symbols': 1,
+      \ 'styles': 1,
+      \ }
+
+" ════════════════════════════════════════════════════════════════
+"  Prose-friendly settings — applied ONLY to .tex files
+"  (Python and other code files keep the default code-editing setup.)
+" ════════════════════════════════════════════════════════════════
+augroup prose_tex
+  autocmd!
+  " Soft-wrap at word boundaries, with hanging indent so wrapped lines
+  " visually align beneath their parent line instead of hugging col 0
+  autocmd FileType tex setlocal wrap linebreak breakindent
+  autocmd FileType tex setlocal breakindentopt=shift:2,sbr
+  autocmd FileType tex let &showbreak = '↪ '
+  " No hard textwidth (we soft-wrap visually instead)
+  autocmd FileType tex setlocal textwidth=0 nolist
+  " Absolute line numbers feel better for prose than relative
+  autocmd FileType tex setlocal norelativenumber
+  " Move by visible line so j/k feel right inside long paragraphs
+  autocmd FileType tex nnoremap <buffer> j gj
+  autocmd FileType tex nnoremap <buffer> k gk
+  autocmd FileType tex vnoremap <buffer> j gj
+  autocmd FileType tex vnoremap <buffer> k gk
+  " Vimtex completion for \cite{}, \ref{}, \includegraphics{}, etc.
+  " Inside insert mode, press <C-x><C-o> to trigger fuzzy completion
+  " from your citations.bib and labels.
+  autocmd FileType tex setlocal omnifunc=vimtex#complete#omnifunc
+  " ALE/chktex: silence the noisiest typographic warnings. Real errors
+  " (missing braces, unknown commands, missing files) still surface.
+  "  12  — interword spacing (\ ) should perhaps be used  ← the noisy one
+  "  13  — intersentence spacing (\ ) should perhaps be used
+  "   8  — wrong dash type ("-" vs "--" vs "---")
+  "  36  — braces aren't needed around single-arg
+  "  44  — user wants \cdots instead of three dots
+  " Leave 1, 2, 18, 24 (real bracket / brace / structural issues) on.
+  autocmd FileType tex let b:ale_tex_chktex_options = '-n8 -n12 -n13 -n36 -n44'
+augroup END

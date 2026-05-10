@@ -190,16 +190,9 @@ if command -v fzf &>/dev/null; then
 fi
 
 # -----------------------------------------------------------------------------
-# zoxide — smart cd
-# -----------------------------------------------------------------------------
-if command -v zoxide &>/dev/null; then
-    eval "$(zoxide init bash)"
-    alias cd='z'
-fi
-
-# -----------------------------------------------------------------------------
 # Starship prompt
 # Falls back to a minimal candle-light PS1 if starship isn't installed.
+# Must come BEFORE zoxide — zoxide expects to be the very last thing.
 # -----------------------------------------------------------------------------
 if command -v starship &>/dev/null; then
     eval "$(starship init bash)"
@@ -212,4 +205,79 @@ else
     PS1+='\[\033[38;2;217;153;98m\]$(_git_branch | sed "s/\(.\+\)/ (\1)/")\[\033[0m\]'
     PS1+='\[\033[38;2;85;85;85m\] \$ \[\033[0m\]'
     export PS1
+fi
+
+# -----------------------------------------------------------------------------
+# Extinguish on exit — print one wisp of smoke as the candle goes out.
+# -----------------------------------------------------------------------------
+trap 'printf "\033[38;2;85;85;85m~\033[0m\n"' EXIT
+
+# -----------------------------------------------------------------------------
+# Candle-light prompt hooks
+#   - Track command exit status and timing for starship
+#   - Set CANDLE_FLAME_TIER:  calm | lit | out
+#   - Emit an idle wisp (~) when more than 10 min pass between prompts
+#
+# These run on every prompt redraw, so they must be cheap.
+# -----------------------------------------------------------------------------
+_candle_preexec() {
+    # Save the start time of the next command (in seconds since epoch, ms-ish)
+    _candle_cmd_start_ms=$(($(date +%s%N) / 1000000))
+}
+
+_candle_precmd() {
+    local last_status=$?
+    local now_ms=$(($(date +%s%N) / 1000000))
+
+    # ── Command duration in ms (only export if we tracked a start) ─────────
+    if [ -n "$_candle_cmd_start_ms" ]; then
+        export CANDLE_CMD_DURATION_MS=$((now_ms - _candle_cmd_start_ms))
+    else
+        unset CANDLE_CMD_DURATION_MS
+    fi
+
+    # ── Idle wisp ───────────────────────────────────────────────────────────
+    # If the last prompt drew more than 10 minutes ago, print a smoke wisp
+    # before the next prompt renders. The candle has been quietly burning.
+    if [ -n "$_candle_last_prompt_ms" ]; then
+        local idle_ms=$((now_ms - _candle_last_prompt_ms))
+        if [ "$idle_ms" -gt 600000 ]; then    # 10 minutes
+            printf '\033[38;2;85;85;85m~\033[0m\n'
+        fi
+    fi
+    _candle_last_prompt_ms=$now_ms
+
+    # ── Flame tier ──────────────────────────────────────────────────────────
+    if [ "$last_status" -ne 0 ]; then
+        export CANDLE_FLAME_TIER="out"
+    else
+        # Check git cleanliness if we're inside a repo
+        if git rev-parse --git-dir >/dev/null 2>&1; then
+            if [ -z "$(git status --porcelain 2>/dev/null)" ]; then
+                export CANDLE_FLAME_TIER="calm"
+            else
+                export CANDLE_FLAME_TIER="lit"
+            fi
+        else
+            # Not in a repo — calm by default (no work outstanding)
+            export CANDLE_FLAME_TIER="calm"
+        fi
+    fi
+
+    unset _candle_cmd_start_ms
+}
+
+# Bash doesn't have a real preexec; we use the DEBUG trap as a stand-in.
+# Conditional ensures we don't fire mid-prompt-rendering.
+trap '[ -n "$BASH_COMMAND" ] && [ "$BASH_COMMAND" != "$PROMPT_COMMAND" ] && _candle_preexec' DEBUG
+PROMPT_COMMAND="_candle_precmd${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
+
+# -----------------------------------------------------------------------------
+# zoxide — smart cd
+# Must be the LAST thing in this file. zoxide hooks into the prompt chain
+# and complains if anything initializes after it.
+# -----------------------------------------------------------------------------
+if command -v zoxide &>/dev/null; then
+    eval "$(zoxide init bash)"
+    alias cd='z'
 fi

@@ -1,108 +1,111 @@
 # =============================================================================
-# starship.toml — candle-light, native
+# starship.toml — candle-light, native (v2)
 #
-# Design intent: the prompt IS a candle. Two lines.
+# Three-line format:
+#   Line 1 (smoke)  — only renders when something is drifting overhead
+#                     (currently: spotify, idle wisp)
+#   Line 2 (heat)   — path, git, runtime, ssh, time. Quiet, unboxed.
+#   Line 3 (flame)  — single warm mark where you type. Three-tier:
+#                       ivory ❯  → calm     (clean repo, last cmd succeeded)
+#                       amber ❯  → active   (default)
+#                       ember †  → struggling (last cmd failed)
 #
-#   Line 1 — the heat trail. Information that hangs in the air above the flame:
-#            path, git, runtime, ssh, time. Quiet, unboxed, colored text only.
-#
-#   Line 2 — the flame. A single warm mark where you type. Lit when commands
-#            succeed, guttered (dim, smoky) when they fail.
-#
-# No segments, no chevrons, no powerline. Color carries meaning through
-# brightness, not boxes.
-#
-# Palette
+# Palette (no extensions; everything must come from these)
 #   amber   #D99962  flame
 #   wax     #C8955A  body
 #   wick    #7A6A55  cord
 #   bone    #E8E0D0  off-white text
-#   dim     #555555  receded info
-#   shadow  #383838  comment / overdue
-#   ember   #6B2A1A  guttering / error
+#   ivory   #F5EFE0  brightest — calm/cleared state (was unused)
+#   mute    #555555  receded info
+#   shadow  #383838  comment / mourning
+#   ember   #6B2A1A  guttering / error / urgent
 # =============================================================================
 
 "$schema" = 'https://starship.rs/config-schema.json'
 
-# Two-line format. Top is the heat trail; bottom is the flame.
 format = """
+${custom.spotify}\
+$line_break\
 $directory\
 $git_branch$git_status\
 $python$nodejs$rust$golang\
-$hostname$container$custom\
+$hostname$container\
 $battery\
-$cmd_duration\
+${custom.mem}\
+${custom.duration}\
+$time\
 $line_break\
-$character"""
+${custom.flame_calm}${custom.flame_lit}${custom.flame_out}"""
 
-right_format = """$time"""
-
-# Faint separator between top line and prompt — like the line where heat
-# meets the flame. Just whitespace, no character.
 add_newline = false
 
-# --- Directory: the body of the candle, in wax -----------------------------
+# --- Directory: wax body of the candle -------------------------------------
 [directory]
 style = "fg:#C8955A"
 format = "[$path]($style) "
-truncation_length = 3
+truncation_length = 4
+truncate_to_repo = true
 truncation_symbol = "…/"
-read_only = " [ro](fg:#7A6A55)"
+# Bumped to ember — when it matters, you notice
+read_only = " [ro](fg:#6B2A1A)"
 
-# --- Git branch: amber when active, the live ember of the workspace --------
+# --- Git branch: amber ember of the workspace ------------------------------
 [git_branch]
 symbol = ""
 style = "fg:#D99962"
 format = "[($branch)]($style) "
 
-# --- Git status: ember when dirty, almost invisible when clean -------------
+# --- Git status: trailing-spaced symbols, ember when dirty -----------------
+# Note: each symbol carries its own trailing space so glyphs don't collide
+# (✱ ✚ ? rather than ✱✚?)
 [git_status]
 style = "fg:#6B2A1A"
 format = "[$all_status$ahead_behind]($style) "
-modified = "✱"
-staged = "✚"
-untracked = "?"
-deleted = "✖"
-ahead = "↑${count}"
-behind = "↓${count}"
-diverged = "↕${ahead_count}↓${behind_count}"
+modified = "✱ "
+staged = "✚ "
+untracked = "? "
+deleted = "✖ "
+ahead = "↑${count} "
+behind = "↓${count} "
+diverged = "↕${ahead_count}↓${behind_count} "
 
-# --- Runtime versions: wick, the supporting context ------------------------
+# --- Runtime versions: wick, no parens -------------------------------------
 [python]
 symbol = "py"
 style = "fg:#7A6A55"
-format = "[$symbol ${pyenv_prefix}(\\($virtualenv\\))(${version})]($style) "
+format = "[$symbol ${pyenv_prefix}(\\($virtualenv\\) )${version}]($style) "
 detect_files = ["*.py", "pyproject.toml", "requirements.txt", ".python-version"]
 
 [nodejs]
 symbol = "node"
 style = "fg:#7A6A55"
-format = "[$symbol ($version)]($style) "
+format = "[$symbol $version]($style) "
 
 [rust]
 symbol = "rs"
 style = "fg:#7A6A55"
-format = "[$symbol ($version)]($style) "
+format = "[$symbol $version]($style) "
 
 [golang]
 symbol = "go"
 style = "fg:#7A6A55"
-format = "[$symbol ($version)]($style) "
+format = "[$symbol $version]($style) "
 
-# --- Hostname: amber when SSH'd, grabs your eye ----------------------------
+# --- Hostname when SSH'd ---------------------------------------------------
 [hostname]
 ssh_only = true
 ssh_symbol = "ssh "
 style = "fg:#D99962"
 format = "[$ssh_symbol$hostname]($style) "
 
-# --- Container: wax, you're somewhere contained ----------------------------
+# --- Container: @prefix instead of "in" so it composes with ssh ------------
+# Avoids "ssh remotebox in dev" — now reads as "ssh remotebox @dev"
 [container]
 disabled = false
 style = "fg:#C8955A"
-format = "[in $name]($style) "
+format = "[@$name]($style) "
 
-# --- Battery: ember red when low, otherwise hidden -------------------------
+# --- Battery: ember when low (palette-true) -------------------------------
 [battery]
 full_symbol = ""
 charging_symbol = "↑"
@@ -112,13 +115,13 @@ format = "[bat $symbol $percentage]($style) "
 
 [[battery.display]]
 threshold = 10
-style = "fg:#CC3333"
+style = "fg:#6B2A1A"
 
 [[battery.display]]
 threshold = 20
 style = "fg:#C87932"
 
-# --- RAM (only when over 80%) ----------------------------------------------
+# --- Custom: RAM (>80%) ----------------------------------------------------
 [custom.mem]
 description = "RAM usage when over 80%"
 when = """
@@ -131,35 +134,80 @@ shell = ["bash", "--noprofile", "--norc"]
 style = "fg:#C87932"
 format = "[ram $output]($style) "
 
-# --- Spotify (only when playing) -------------------------------------------
+# --- Custom: Spotify as "smoke" — own line above the heat trail ------------
 [custom.spotify]
-description = "Currently playing track"
+description = "Currently playing track — drifts above the prompt like smoke"
 when = """
 playerctl --player=spotify status 2>/dev/null | grep -q "Playing"
 """
 command = """
-playerctl --player=spotify metadata --format '{{ artist }} — {{ title }}' 2>/dev/null | cut -c -40
+playerctl --player=spotify metadata --format '{{ artist }} — {{ title }}' 2>/dev/null | cut -c -50
+"""
+shell = ["bash", "--noprofile", "--norc"]
+style = "fg:#383838"
+format = "[~ $output]($style)"
+
+# --- Command duration: humanized output (no more "took 14400s") ------------
+# Uses a custom replacement for the built-in cmd_duration so 4h reads as 4h
+[cmd_duration]
+disabled = true   # disabled in favor of the custom human-readable version
+
+[custom.duration]
+description = "Human-readable command duration"
+when = """ [ -n "$CANDLE_CMD_DURATION_MS" ] && [ "$CANDLE_CMD_DURATION_MS" -ge 2000 ] """
+command = """
+ms=${CANDLE_CMD_DURATION_MS}
+if   [ $ms -ge 3600000 ]; then printf 'took %dh' $((ms/3600000))
+elif [ $ms -ge   60000 ]; then printf 'took %dm' $((ms/60000))
+else                            printf 'took %ds' $((ms/1000))
+fi
 """
 shell = ["bash", "--noprofile", "--norc"]
 style = "fg:#7A6A55"
-format = "[♪ $output]($style) "
+format = "[$output]($style) "
 
-# --- Command duration: wick, "this took a while" --------------------------
-[cmd_duration]
-min_time = 2_000
-style = "fg:#7A6A55"
-format = "[took $duration]($style) "
-
-# --- Time on the right edge — receded, just reference ---------------------
+# --- Time on the heat-trail line ------------------------------------------
 [time]
 disabled = false
 time_format = "%H:%M"
 style = "fg:#555555"
 format = "[$time]($style)"
 
-# --- Prompt character — THE FLAME -----------------------------------------
-# Single amber mark when lit, ember-red and "smoky" when something failed.
-# This is the only always-on warm element. All your attention belongs here.
+# --- Prompt character — three-tier, gated by env vars from .bashrc --------
+# We disable starship's built-in [character] and use a custom module instead,
+# because [character] only supports two states (success/error) but we want
+# three: calm (ivory ❯) · active (amber ❯) · struggling (ember †).
+#
+# .bashrc precmd hook sets CANDLE_FLAME_TIER to one of:
+#   "calm"  — last cmd succeeded AND we're in a clean git repo (or no repo)
+#   "lit"   — last cmd succeeded AND we have uncommitted work
+#   "out"   — last cmd failed
+#
+# Three custom modules each render only when their tier matches.
+
 [character]
-success_symbol = "[🕯️](#D99962)"
-error_symbol   = "[†](#6B2A1A)"
+disabled = true
+
+[custom.flame_calm]
+description = "Calm flame — clean repo, last cmd succeeded"
+when = """ [ "${CANDLE_FLAME_TIER:-lit}" = "calm" ] """
+command = "echo ❯"
+shell = ["bash", "--noprofile", "--norc"]
+style = "fg:#F5EFE0"
+format = "[$output]($style) "
+
+[custom.flame_lit]
+description = "Active flame — default working state"
+when = """ [ "${CANDLE_FLAME_TIER:-lit}" = "lit" ] """
+command = "echo ❯"
+shell = ["bash", "--noprofile", "--norc"]
+style = "fg:#D99962"
+format = "[$output]($style) "
+
+[custom.flame_out]
+description = "Guttered — last command failed"
+when = """ [ "${CANDLE_FLAME_TIER:-lit}" = "out" ] """
+command = "echo †"
+shell = ["bash", "--noprofile", "--norc"]
+style = "fg:#6B2A1A"
+format = "[$output]($style) "
